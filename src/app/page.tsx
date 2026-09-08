@@ -1,9 +1,13 @@
 import { auth, signIn, signOut } from "@/auth";
+import { submitEntryAction } from "./actions";
 
-// Temporary test page — just to prove Google login + our allowlist logic
-// work end-to-end before we build the real worker/admin UI.
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: string }>;
+}) {
   const session = await auth();
+  const { saved } = await searchParams;
 
   if (!session) {
     return (
@@ -27,22 +31,65 @@ export default async function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <p>Logged in as {session.user.email}</p>
-      <p>Role: {session.user.role}</p>
-      <form
-        action={async () => {
-          "use server";
-          await signOut();
-        }}
-      >
+    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold">Dnevnik radova</h1>
+          <p className="text-sm text-zinc-500">{session.user.email}</p>
+        </div>
+        <form
+          action={async () => {
+            "use server";
+            await signOut();
+          }}
+        >
+          <button type="submit" className="text-sm text-zinc-500 underline">
+            Odjava
+          </button>
+        </form>
+      </div>
+
+      {saved && (
+        <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-800">
+          Unos spremljen.
+        </p>
+      )}
+
+      <form action={submitEntryAction} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor="description" className="mb-1 block text-sm font-medium">
+            Što ste danas radili?
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            required
+            rows={5}
+            className="w-full rounded border border-zinc-300 p-2"
+          />
+        </div>
+
+        <ToggleRow name="materialOnSite" label="Je li sav materijal na gradilištu?" />
+        <ToggleRow name="hasExtraPaidWork" label="Ima li dodatnih radova za naplatu?" />
+        <ToggleRow name="hasProblems" label="Problemi ili zastoji?" />
+        <ToggleRow name="needsOrder" label="Treba li nešto naručiti?" />
+
         <button
           type="submit"
-          className="rounded border px-4 py-2"
+          className="mt-2 rounded bg-orange-500 px-4 py-3 font-medium text-white"
         >
-          Sign out
+          Spremi
         </button>
       </form>
     </div>
+  );
+}
+
+function ToggleRow({ name, label }: { name: string; label: string }) {
+  return (
+    <label className="flex items-center justify-between gap-4">
+      <span className="text-sm">{label}</span>
+      <input type="checkbox" name={name} className="h-5 w-5" />
+    </label>
   );
 }
