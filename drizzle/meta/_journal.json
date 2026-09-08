@@ -8,6 +8,13 @@
       "when": 1788895974839,
       "tag": "0000_wise_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788900370160,
+      "tag": "0001_shallow_sunfire",
+      "breakpoints": true
     }
   ]
 }

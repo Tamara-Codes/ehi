@@ -8,6 +8,7 @@ import {
   pgEnum,
   integer,
   time,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // pgEnum defines a fixed set of allowed string values at the database level —
@@ -31,10 +32,25 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   role: userRoleEnum("role").notNull().default("worker"),
   status: userStatusEnum("status").notNull().default("invited"),
-  // A worker is usually tied to one site; admins leave this null.
-  siteId: integer("site_id").references(() => sites.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Join table: a worker can be assigned to several sites (matches the
+// mockup's site-switcher pills), and a site can have several workers — a
+// many-to-many relationship, which a single siteId column can't express.
+export const userSites = pgTable(
+  "user_sites",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .references(() => users.id)
+      .notNull(),
+    siteId: integer("site_id")
+      .references(() => sites.id)
+      .notNull(),
+  },
+  (table) => [unique().on(table.userId, table.siteId)],
+);
 
 export const entries = pgTable("entries", {
   id: serial("id").primaryKey(),

@@ -1,5 +1,6 @@
 import { auth, signIn, signOut } from "@/auth";
 import { submitEntryAction } from "./actions";
+import { getSitesForUser } from "@/lib/repositories/sites.repo";
 
 export default async function Home({
   searchParams,
@@ -30,6 +31,8 @@ export default async function Home({
     );
   }
 
+  const sites = await getSitesForUser(session.user.id);
+
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
@@ -55,7 +58,31 @@ export default async function Home({
         </p>
       )}
 
+      {sites.length === 0 ? (
+        <p className="rounded bg-yellow-100 px-3 py-2 text-sm text-yellow-800">
+          Nemate dodijeljeno gradilište. Obratite se administratoru.
+        </p>
+      ) : (
       <form action={submitEntryAction} className="flex flex-col gap-4">
+        <div className="flex gap-2">
+          {sites.map((site, i) => (
+            <label
+              key={site.id}
+              className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1.5 text-sm has-[:checked]:border-zinc-900 has-[:checked]:bg-zinc-900 has-[:checked]:text-white"
+            >
+              <input
+                type="radio"
+                name="siteId"
+                value={site.id}
+                defaultChecked={i === 0}
+                required
+                className="sr-only"
+              />
+              {site.name}
+            </label>
+          ))}
+        </div>
+
         <div>
           <label htmlFor="images" className="mb-1 block text-sm font-medium">
             Slike
@@ -97,6 +124,7 @@ export default async function Home({
           Spremi
         </button>
       </form>
+      )}
     </div>
   );
 }

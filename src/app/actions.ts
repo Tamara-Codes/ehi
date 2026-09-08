@@ -16,6 +16,8 @@ export async function submitEntryAction(formData: FormData) {
     .getAll("images")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
+  const siteId = Number(formData.get("siteId"));
+
   await createEntryForCurrentUser(
     {
       description: String(formData.get("description") ?? ""),
@@ -25,6 +27,7 @@ export async function submitEntryAction(formData: FormData) {
       needsOrder: formData.get("needsOrder") === "on",
     },
     images,
+    siteId,
   );
 
   redirect("/?saved=1");
