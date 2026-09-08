@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { insertEntry } from "@/lib/repositories/entries.repo";
+import { insertEntry, insertEntryImages } from "@/lib/repositories/entries.repo";
+import { uploadEntryImage } from "@/lib/storage";
 
 // Validates the shape/size of what the client sent us, before it's trusted
 // anywhere else. This is the boundary check from our security plan.
@@ -17,7 +18,11 @@ const entryInputSchema = z.object({
 
 export type EntryInput = z.infer<typeof entryInputSchema>;
 
-export async function createEntryForCurrentUser(input: EntryInput) {
+const MAX_IMAGES = 6;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic"]);
+
+export async function createEntryForCurrentUser(input: EntryInput, images: File[]) {
   // Everything here derives from the server-side session, never from
   // anything the client claims — this is the "row-level scoping in
   // services, not trust in the client" rule from earlier.
@@ -27,6 +32,20 @@ export async function createEntryForCurrentUser(input: EntryInput) {
   }
 
   const parsed = entryInputSchema.parse(input);
+
+  // Reject bad images before anything touches R2 or the database — the
+  // same "validate at the boundary" rule as the text fields above.
+  if (images.length > MAX_IMAGES) {
+    throw new Error(`Too many images (max ${MAX_IMAGES})`);
+  }
+  for (const image of images) {
+    if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
+      throw new Error(`Unsupported image type: ${image.type}`);
+    }
+    if (image.size > MAX_IMAGE_BYTES) {
+      throw new Error(`Image too large (max ${MAX_IMAGE_BYTES / 1024 / 1024}MB)`);
+    }
+  }
 
   const [worker] = await db
     .select()
@@ -41,7 +60,7 @@ export async function createEntryForCurrentUser(input: EntryInput) {
   // client is allowed to pick, so nobody can backdate/forward-date an entry.
   const today = new Date().toISOString().slice(0, 10);
 
-  return insertEntry({
+  const entry = await insertEntry({
     userId: worker.id,
     siteId: worker.siteId,
     entryDate: today,
@@ -51,4 +70,14 @@ export async function createEntryForCurrentUser(input: EntryInput) {
     hasProblems: parsed.hasProblems,
     needsOrder: parsed.needsOrder,
   });
+
+  const storageKeys: string[] = [];
+  for (const image of images) {
+    const buffer = Buffer.from(await image.arrayBuffer());
+    const key = await uploadEntryImage(entry.id, buffer, image.type);
+    storageKeys.push(key);
+  }
+  await insertEntryImages(entry.id, storageKeys);
+
+  return entry;
 }

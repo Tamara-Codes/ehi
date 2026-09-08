@@ -9,13 +9,23 @@ import { redirect } from "next/navigation";
 export async function submitEntryAction(formData: FormData) {
   // FormData gives us everything as strings — checkboxes only appear in
   // FormData at all when checked, so presence (not value) is what we check.
-  await createEntryForCurrentUser({
-    description: String(formData.get("description") ?? ""),
-    materialOnSite: formData.get("materialOnSite") === "on",
-    hasExtraPaidWork: formData.get("hasExtraPaidWork") === "on",
-    hasProblems: formData.get("hasProblems") === "on",
-    needsOrder: formData.get("needsOrder") === "on",
-  });
+  // getAll("images") returns every file the user attached under that name;
+  // an empty/unselected file input still shows up as one zero-byte File, so
+  // we filter those out.
+  const images = formData
+    .getAll("images")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+  await createEntryForCurrentUser(
+    {
+      description: String(formData.get("description") ?? ""),
+      materialOnSite: formData.get("materialOnSite") === "on",
+      hasExtraPaidWork: formData.get("hasExtraPaidWork") === "on",
+      hasProblems: formData.get("hasProblems") === "on",
+      needsOrder: formData.get("needsOrder") === "on",
+    },
+    images,
+  );
 
   redirect("/?saved=1");
 }

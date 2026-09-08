@@ -57,6 +57,22 @@ export default async function Home({
 
       <form action={submitEntryAction} className="flex flex-col gap-4">
         <div>
+          <label htmlFor="images" className="mb-1 block text-sm font-medium">
+            Slike
+          </label>
+          <input
+            id="images"
+            name="images"
+            type="file"
+            accept="image/*"
+            multiple
+            capture="environment"
+            className="w-full text-sm"
+          />
+          <p className="mt-1 text-xs text-zinc-500">Do 6 slika, do 8MB svaka.</p>
+        </div>
+
+        <div>
           <label htmlFor="description" className="mb-1 block text-sm font-medium">
             Što ste danas radili?
           </label>
