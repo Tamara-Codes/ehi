@@ -15,6 +15,13 @@
       "when": 1788900370160,
       "tag": "0001_shallow_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788941468640,
+      "tag": "0002_sudden_komodo",
+      "breakpoints": true
     }
   ]
 }

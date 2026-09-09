@@ -19,3 +19,11 @@ export async function updateNotificationTime(time: string) {
     .returning();
   return row;
 }
+
+export async function markNotifiedToday(date: string) {
+  const current = await getSettings();
+  await db
+    .update(settings)
+    .set({ lastNotifiedDate: date })
+    .where(eq(settings.id, current.id));
+}

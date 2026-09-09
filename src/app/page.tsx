@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { submitEntryAction } from "./actions";
 import { getSitesForUser } from "@/lib/repositories/sites.repo";
+import { EnablePushButton } from "@/components/EnablePushButton";
 
 export default async function Home({
   searchParams,
@@ -72,6 +73,8 @@ export default async function Home({
             ✓ Unos spremljen.
           </div>
         )}
+
+        <EnablePushButton />
 
         {sites.length === 0 ? (
           <div className="card text-sm text-muted">

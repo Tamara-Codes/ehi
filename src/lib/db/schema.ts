@@ -84,5 +84,22 @@ export const entryImages = pgTable("entry_images", {
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   notificationTime: time("notification_time").notNull().default("16:00:00"),
+  // Tracks the last date the daily reminder was actually sent, so a cron
+  // job that runs every few minutes doesn't send the same day's reminder
+  // twice if its run happens to land on the target time more than once.
+  lastNotifiedDate: date("last_notified_date"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// One row per browser/device a worker has enabled notifications on — a
+// worker using two phones gets two rows, both should receive the push.
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });

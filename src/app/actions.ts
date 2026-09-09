@@ -1,6 +1,7 @@
 "use server";
 
 import { createEntryForCurrentUser } from "@/lib/services/entries.service";
+import { subscribeCurrentUser } from "@/lib/services/push.service";
 import { redirect } from "next/navigation";
 
 // This is what our <form> below actually calls on submit. It only ever runs
@@ -31,4 +32,12 @@ export async function submitEntryAction(formData: FormData) {
   );
 
   redirect("/?saved=1");
+}
+
+// Called directly from the client-side "enable notifications" button — not
+// bound to a <form>. Server Actions can be imported and called like a
+// regular async function from a Client Component; Next.js handles sending
+// the call to the server and back automatically.
+export async function subscribeToPushAction(subscription: unknown) {
+  await subscribeCurrentUser(subscription);
 }
