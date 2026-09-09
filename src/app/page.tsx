@@ -136,9 +136,24 @@ export default async function Home({
 
             <div className="card flex flex-col divide-y divide-border">
               <ToggleRow name="materialOnSite" label="Je li sav materijal na gradilištu?" />
-              <ToggleRow name="hasExtraPaidWork" label="Ima li dodatnih radova za naplatu?" />
-              <ToggleRow name="hasProblems" label="Problemi ili zastoji?" />
-              <ToggleRow name="needsOrder" label="Treba li nešto naručiti?" />
+              <ToggleRow
+                name="hasExtraPaidWork"
+                label="Ima li dodatnih radova za naplatu?"
+                noteName="extraPaidWorkNote"
+                notePlaceholder="Koji dodatni radovi?"
+              />
+              <ToggleRow
+                name="hasProblems"
+                label="Problemi ili zastoji?"
+                noteName="problemsNote"
+                notePlaceholder="Kakav problem?"
+              />
+              <ToggleRow
+                name="needsOrder"
+                label="Treba li nešto naručiti?"
+                noteName="orderNote"
+                notePlaceholder="Što treba naručiti?"
+              />
             </div>
 
             <button type="submit" className="btn-primary">
@@ -151,14 +166,37 @@ export default async function Home({
   );
 }
 
-function ToggleRow({ name, label }: { name: string; label: string }) {
+function ToggleRow({
+  name,
+  label,
+  noteName,
+  notePlaceholder,
+}: {
+  name: string;
+  label: string;
+  noteName?: string;
+  notePlaceholder?: string;
+}) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <span className="text-sm">{label}</span>
-      <span className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-border transition-colors has-[:checked]:bg-accent">
-        <input type="checkbox" name={name} className="peer sr-only" />
-        <span className="inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[22px]" />
-      </span>
-    </label>
+    // "group" here is what lets the note textarea below react to this
+    // toggle's checked state via group-has-[:checked]: — pure CSS, no
+    // client-side JavaScript needed to show/hide it.
+    <div className="group py-3 first:pt-0 last:pb-0">
+      <label className="flex cursor-pointer items-center justify-between gap-4">
+        <span className="text-sm">{label}</span>
+        <span className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-border transition-colors has-[:checked]:bg-accent">
+          <input type="checkbox" name={name} className="peer sr-only" />
+          <span className="inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[22px]" />
+        </span>
+      </label>
+      {noteName && (
+        <input
+          type="text"
+          name={noteName}
+          placeholder={notePlaceholder}
+          className="field-input mt-2 hidden group-has-[:checked]:block"
+        />
+      )}
+    </div>
   );
 }

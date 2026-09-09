@@ -64,8 +64,11 @@ export const entries = pgTable("entries", {
   description: text("description").notNull(),
   materialOnSite: boolean("material_on_site").notNull().default(false),
   hasExtraPaidWork: boolean("has_extra_paid_work").notNull().default(false),
+  extraPaidWorkNote: text("extra_paid_work_note"),
   hasProblems: boolean("has_problems").notNull().default(false),
+  problemsNote: text("problems_note"),
   needsOrder: boolean("needs_order").notNull().default(false),
+  orderNote: text("order_note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

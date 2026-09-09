@@ -129,12 +129,25 @@ export default async function AdminEntriesPage({
               </div>
               <p className="mt-2 text-sm">{entry.description}</p>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {entry.materialOnSite && <Tag label="Materijal na gradilištu" />}
-                {entry.hasExtraPaidWork && <Tag label="Dodatni radovi za naplatu" />}
-                {entry.hasProblems && <Tag label="Problemi ili zastoji" tone="warn" />}
-                {entry.needsOrder && <Tag label="Treba naručiti" tone="warn" />}
-              </div>
+              {entry.materialOnSite && (
+                <div className="mt-3">
+                  <Tag label="Materijal na gradilištu" />
+                </div>
+              )}
+
+              {(entry.hasExtraPaidWork || entry.hasProblems || entry.needsOrder) && (
+                <div className="mt-3 flex flex-col gap-2">
+                  {entry.hasExtraPaidWork && (
+                    <NoteLine label="Dodatni radovi za naplatu" note={entry.extraPaidWorkNote} />
+                  )}
+                  {entry.hasProblems && (
+                    <NoteLine label="Problemi ili zastoji" note={entry.problemsNote} tone="warn" />
+                  )}
+                  {entry.needsOrder && (
+                    <NoteLine label="Treba naručiti" note={entry.orderNote} tone="warn" />
+                  )}
+                </div>
+              )}
 
               {entry.imageUrls.length > 0 && (
                 <div className="mt-3 flex gap-2 overflow-x-auto">
@@ -161,4 +174,21 @@ export default async function AdminEntriesPage({
 
 function Tag({ label, tone = "default" }: { label: string; tone?: "default" | "warn" }) {
   return <span className={tone === "warn" ? "tag-warn" : "tag"}>{label}</span>;
+}
+
+function NoteLine({
+  label,
+  note,
+  tone = "default",
+}: {
+  label: string;
+  note: string | null;
+  tone?: "default" | "warn";
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Tag label={label} tone={tone} />
+      {note && <span className="text-sm text-foreground">{note}</span>}
+    </div>
+  );
 }

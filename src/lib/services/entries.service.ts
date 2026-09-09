@@ -12,8 +12,11 @@ const entryInputSchema = z.object({
   description: z.string().trim().min(1, "Description is required").max(2000),
   materialOnSite: z.boolean(),
   hasExtraPaidWork: z.boolean(),
+  extraPaidWorkNote: z.string().trim().max(500).optional(),
   hasProblems: z.boolean(),
+  problemsNote: z.string().trim().max(500).optional(),
   needsOrder: z.boolean(),
+  orderNote: z.string().trim().max(500).optional(),
 });
 
 export type EntryInput = z.infer<typeof entryInputSchema>;
@@ -68,6 +71,9 @@ export async function createEntryForCurrentUser(
   // client is allowed to pick, so nobody can backdate/forward-date an entry.
   const today = new Date().toISOString().slice(0, 10);
 
+  // If a toggle is off, discard whatever note text came with it — a client
+  // could technically send note text without checking the box, and it
+  // shouldn't be stored as if it meant something.
   const entry = await insertEntry({
     userId: session.user.id,
     siteId,
@@ -75,8 +81,11 @@ export async function createEntryForCurrentUser(
     description: parsed.description,
     materialOnSite: parsed.materialOnSite,
     hasExtraPaidWork: parsed.hasExtraPaidWork,
+    extraPaidWorkNote: parsed.hasExtraPaidWork ? (parsed.extraPaidWorkNote ?? null) : null,
     hasProblems: parsed.hasProblems,
+    problemsNote: parsed.hasProblems ? (parsed.problemsNote ?? null) : null,
     needsOrder: parsed.needsOrder,
+    orderNote: parsed.needsOrder ? (parsed.orderNote ?? null) : null,
   });
 
   const storageKeys: string[] = [];
