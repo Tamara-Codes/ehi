@@ -84,6 +84,13 @@ export const entryImages = pgTable("entry_images", {
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   notificationTime: time("notification_time").notNull().default("16:00:00"),
+  // Which days of the week the reminder goes out, as JS Date.getDay()
+  // values (0=Sunday..6=Saturday) — lets the admin skip weekends, or
+  // include a half-day Saturday, etc. Defaults to every day.
+  notifyDays: integer("notify_days")
+    .array()
+    .notNull()
+    .default([0, 1, 2, 3, 4, 5, 6]),
   // Tracks the last date the daily reminder was actually sent, so a cron
   // job that runs every few minutes doesn't send the same day's reminder
   // twice if its run happens to land on the target time more than once.

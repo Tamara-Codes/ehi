@@ -7,7 +7,7 @@ import {
   addSite,
   assignSite,
   unassignSite,
-  setNotificationTime,
+  setNotificationSchedule,
 } from "@/lib/services/admin.service";
 
 export async function addWorkerAction(formData: FormData) {
@@ -44,7 +44,12 @@ export async function unassignSiteAction(formData: FormData) {
   revalidatePath("/admin/team");
 }
 
-export async function setNotificationTimeAction(formData: FormData) {
-  await setNotificationTime(String(formData.get("time") ?? ""));
+export async function setNotificationScheduleAction(formData: FormData) {
+  const hour = String(formData.get("hour") ?? "").padStart(2, "0");
+  const minute = String(formData.get("minute") ?? "").padStart(2, "0");
+  // Checkboxes only appear in FormData when checked, one entry per checked
+  // day — getAll collects all of them at once.
+  const days = formData.getAll("days").map(Number);
+  await setNotificationSchedule(`${hour}:${minute}`, days);
   revalidatePath("/admin/settings");
 }

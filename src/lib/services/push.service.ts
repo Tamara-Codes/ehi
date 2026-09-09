@@ -37,6 +37,11 @@ export async function sendDailyReminderIfDue() {
   }
 
   const now = new Date();
+
+  if (!settings.notifyDays.includes(now.getDay())) {
+    return { sent: false, reason: "not-a-notify-day" as const };
+  }
+
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const targetTime = settings.notificationTime.slice(0, 5);
 

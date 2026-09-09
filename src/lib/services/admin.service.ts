@@ -11,7 +11,7 @@ import {
   assignWorkerToSite,
   unassignWorkerFromSite,
 } from "@/lib/repositories/sites.repo";
-import { getSettings, updateNotificationTime } from "@/lib/repositories/settings.repo";
+import { getSettings, updateNotificationSchedule } from "@/lib/repositories/settings.repo";
 import {
   getEntryCountsForMonth,
   getEntriesForDate,
@@ -66,11 +66,13 @@ export async function getNotificationSettings() {
 }
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time (HH:MM)");
+const daysSchema = z.array(z.number().int().min(0).max(6)).min(1, "Pick at least one day");
 
-export async function setNotificationTime(time: string) {
+export async function setNotificationSchedule(time: string, days: number[]) {
   await requireAdmin();
   const validTime = timeSchema.parse(time);
-  return updateNotificationTime(`${validTime}:00`);
+  const validDays = daysSchema.parse(days);
+  return updateNotificationSchedule(`${validTime}:00`, validDays);
 }
 
 // year: 4-digit, month: 1-12. Returns a map of "YYYY-MM-DD" -> entry count,

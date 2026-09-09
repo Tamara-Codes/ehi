@@ -84,7 +84,10 @@ export default async function Home({
           <form action={submitEntryAction} className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-2">
               {sites.map((site, i) => (
-                <label key={site.id} className="pill has-[:checked]:pill-selected">
+                <label
+                  key={site.id}
+                  className="pill has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-white"
+                >
                   <input
                     type="radio"
                     name="siteId"

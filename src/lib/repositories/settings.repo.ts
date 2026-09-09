@@ -10,11 +10,11 @@ export async function getSettings() {
   return created;
 }
 
-export async function updateNotificationTime(time: string) {
+export async function updateNotificationSchedule(time: string, days: number[]) {
   const current = await getSettings();
   const [row] = await db
     .update(settings)
-    .set({ notificationTime: time, updatedAt: new Date() })
+    .set({ notificationTime: time, notifyDays: days, updatedAt: new Date() })
     .where(eq(settings.id, current.id))
     .returning();
   return row;
