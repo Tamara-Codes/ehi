@@ -13,19 +13,21 @@ export default async function Home({
 
   if (!session) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p>Not logged in.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+        <div className="text-center">
+          <p className="text-sm font-semibold tracking-wide text-muted uppercase">
+            EHI Babić
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold">Dnevnik radova</h1>
+        </div>
         <form
           action={async () => {
             "use server";
             await signIn("google");
           }}
         >
-          <button
-            type="submit"
-            className="rounded bg-orange-500 px-4 py-2 text-white"
-          >
-            Sign in with Google
+          <button type="submit" className="btn-primary">
+            Prijava putem Googlea
           </button>
         </form>
       </div>
@@ -35,113 +37,122 @@ export default async function Home({
   const sites = await getSitesForUser(session.user.id);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Dnevnik radova</h1>
-          <p className="text-sm text-zinc-500">{session.user.email}</p>
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur">
+        <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-brand uppercase">
+              EHI Babić
+            </p>
+            <h1 className="text-base font-semibold">Dnevnik radova</h1>
+          </div>
+          <div className="flex items-center gap-3 text-sm text-muted">
+            {session.user.role === "admin" && (
+              <Link href="/admin" className="font-medium text-foreground hover:text-brand">
+                Admin
+              </Link>
+            )}
+            <form
+              action={async () => {
+                "use server";
+                await signOut();
+              }}
+            >
+              <button type="submit" className="hover:text-foreground">
+                Odjava
+              </button>
+            </form>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {session.user.role === "admin" && (
-            <Link href="/admin" className="text-sm text-zinc-500 underline">
-              Admin
-            </Link>
-          )}
-          <form
-            action={async () => {
-              "use server";
-              await signOut();
-            }}
-          >
-            <button type="submit" className="text-sm text-zinc-500 underline">
-              Odjava
+      </header>
+
+      <main className="mx-auto flex max-w-md flex-col gap-4 p-6">
+        {saved && (
+          <div className="rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+            ✓ Unos spremljen.
+          </div>
+        )}
+
+        {sites.length === 0 ? (
+          <div className="card text-sm text-muted">
+            Nemate dodijeljeno gradilište. Obratite se administratoru.
+          </div>
+        ) : (
+          <form action={submitEntryAction} className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-2">
+              {sites.map((site, i) => (
+                <label key={site.id} className="pill has-[:checked]:pill-selected">
+                  <input
+                    type="radio"
+                    name="siteId"
+                    value={site.id}
+                    defaultChecked={i === 0}
+                    required
+                    className="sr-only"
+                  />
+                  {site.name}
+                </label>
+              ))}
+            </div>
+
+            <div className="card flex flex-col gap-4">
+              <div>
+                <label htmlFor="images" className="field-label">
+                  Slike
+                </label>
+                <div className="rounded-xl border-2 border-dashed border-border p-4 text-center transition-colors has-[:hover]:border-brand">
+                  <input
+                    id="images"
+                    name="images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    capture="environment"
+                    className="w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-border"
+                  />
+                  <p className="mt-2 text-xs text-muted">Do 6 slika, do 8MB svaka.</p>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="description" className="field-label">
+                  Što ste danas radili?
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  required
+                  rows={5}
+                  className="field-input resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="card flex flex-col divide-y divide-border">
+              <ToggleRow name="materialOnSite" label="Je li sav materijal na gradilištu?" />
+              <ToggleRow name="hasExtraPaidWork" label="Ima li dodatnih radova za naplatu?" />
+              <ToggleRow name="hasProblems" label="Problemi ili zastoji?" />
+              <ToggleRow name="needsOrder" label="Treba li nešto naručiti?" />
+            </div>
+
+            <button type="submit" className="btn-primary">
+              Spremi
             </button>
           </form>
-        </div>
-      </div>
-
-      {saved && (
-        <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-800">
-          Unos spremljen.
-        </p>
-      )}
-
-      {sites.length === 0 ? (
-        <p className="rounded bg-yellow-100 px-3 py-2 text-sm text-yellow-800">
-          Nemate dodijeljeno gradilište. Obratite se administratoru.
-        </p>
-      ) : (
-      <form action={submitEntryAction} className="flex flex-col gap-4">
-        <div className="flex gap-2">
-          {sites.map((site, i) => (
-            <label
-              key={site.id}
-              className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1.5 text-sm has-[:checked]:border-zinc-900 has-[:checked]:bg-zinc-900 has-[:checked]:text-white"
-            >
-              <input
-                type="radio"
-                name="siteId"
-                value={site.id}
-                defaultChecked={i === 0}
-                required
-                className="sr-only"
-              />
-              {site.name}
-            </label>
-          ))}
-        </div>
-
-        <div>
-          <label htmlFor="images" className="mb-1 block text-sm font-medium">
-            Slike
-          </label>
-          <input
-            id="images"
-            name="images"
-            type="file"
-            accept="image/*"
-            multiple
-            capture="environment"
-            className="w-full text-sm"
-          />
-          <p className="mt-1 text-xs text-zinc-500">Do 6 slika, do 8MB svaka.</p>
-        </div>
-
-        <div>
-          <label htmlFor="description" className="mb-1 block text-sm font-medium">
-            Što ste danas radili?
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            required
-            rows={5}
-            className="w-full rounded border border-zinc-300 p-2"
-          />
-        </div>
-
-        <ToggleRow name="materialOnSite" label="Je li sav materijal na gradilištu?" />
-        <ToggleRow name="hasExtraPaidWork" label="Ima li dodatnih radova za naplatu?" />
-        <ToggleRow name="hasProblems" label="Problemi ili zastoji?" />
-        <ToggleRow name="needsOrder" label="Treba li nešto naručiti?" />
-
-        <button
-          type="submit"
-          className="mt-2 rounded bg-orange-500 px-4 py-3 font-medium text-white"
-        >
-          Spremi
-        </button>
-      </form>
-      )}
+        )}
+      </main>
     </div>
   );
 }
 
 function ToggleRow({ name, label }: { name: string; label: string }) {
   return (
-    <label className="flex items-center justify-between gap-4">
+    <label className="flex cursor-pointer items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
       <span className="text-sm">{label}</span>
-      <input type="checkbox" name={name} className="h-5 w-5" />
+      <span className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-border transition-colors has-[:checked]:bg-accent">
+        <input type="checkbox" name={name} className="peer sr-only" />
+        <span className="inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[22px]" />
+      </span>
     </label>
   );
 }

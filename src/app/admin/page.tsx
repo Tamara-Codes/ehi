@@ -62,72 +62,74 @@ export default async function AdminEntriesPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <Link
-          href={`/admin?month=${prevMonth.getFullYear()}-${pad(prevMonth.getMonth() + 1)}&date=${selectedDate}`}
-          className="px-2 text-zinc-500"
-        >
-          ‹
-        </Link>
-        <h1 className="text-lg font-semibold capitalize">{monthLabel}</h1>
-        <Link
-          href={`/admin?month=${nextMonth.getFullYear()}-${pad(nextMonth.getMonth() + 1)}&date=${selectedDate}`}
-          className="px-2 text-zinc-500"
-        >
-          ›
-        </Link>
-      </div>
+      <div className="card">
+        <div className="mb-4 flex items-center justify-between">
+          <Link
+            href={`/admin?month=${prevMonth.getFullYear()}-${pad(prevMonth.getMonth() + 1)}&date=${selectedDate}`}
+            className="rounded-lg px-2 py-1 text-muted hover:bg-background hover:text-foreground"
+          >
+            ‹
+          </Link>
+          <h1 className="text-base font-semibold capitalize">{monthLabel}</h1>
+          <Link
+            href={`/admin?month=${nextMonth.getFullYear()}-${pad(nextMonth.getMonth() + 1)}&date=${selectedDate}`}
+            className="rounded-lg px-2 py-1 text-muted hover:bg-background hover:text-foreground"
+          >
+            ›
+          </Link>
+        </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {WEEKDAY_LABELS.map((label, i) => (
-          <div key={i} className="py-1 text-xs font-medium text-zinc-400">
-            {label}
-          </div>
-        ))}
-        {cells.map((day, i) => {
-          if (day === null) return <div key={i} />;
-          const dateStr = toISODate(year, month, day);
-          const count = counts[dateStr] ?? 0;
-          const isSelected = dateStr === selectedDate;
-          return (
-            <Link
-              key={i}
-              href={`/admin?month=${year}-${pad(month)}&date=${dateStr}`}
-              className={`flex flex-col items-center gap-0.5 rounded py-1.5 text-sm ${
-                isSelected ? "bg-zinc-900 text-white" : "hover:bg-zinc-100"
-              }`}
-            >
-              <span>{day}</span>
-              <span
-                className={`h-1 w-1 rounded-full ${
-                  count > 0 ? (isSelected ? "bg-white" : "bg-orange-500") : "bg-transparent"
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {WEEKDAY_LABELS.map((label, i) => (
+            <div key={i} className="py-1 text-xs font-medium text-muted">
+              {label}
+            </div>
+          ))}
+          {cells.map((day, i) => {
+            if (day === null) return <div key={i} />;
+            const dateStr = toISODate(year, month, day);
+            const count = counts[dateStr] ?? 0;
+            const isSelected = dateStr === selectedDate;
+            return (
+              <Link
+                key={i}
+                href={`/admin?month=${year}-${pad(month)}&date=${dateStr}`}
+                className={`flex flex-col items-center gap-0.5 rounded-lg py-2 text-sm transition-colors ${
+                  isSelected ? "bg-foreground text-white" : "hover:bg-background"
                 }`}
-              />
-            </Link>
-          );
-        })}
+              >
+                <span>{day}</span>
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    count > 0 ? (isSelected ? "bg-white" : "bg-brand") : "bg-transparent"
+                  }`}
+                />
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-500 uppercase">
+        <h2 className="mb-3 text-sm font-semibold text-muted uppercase">
           {dayLabel} · {entries.length} {entries.length === 1 ? "unos" : "unosa"}
         </h2>
 
         {entries.length === 0 && (
-          <p className="text-sm text-zinc-500">Nema unosa za odabrani dan.</p>
+          <p className="text-sm text-muted">Nema unosa za odabrani dan.</p>
         )}
 
         <div className="flex flex-col gap-4">
           {entries.map((entry) => (
-            <div key={entry.id} className="rounded border border-zinc-200 p-4">
-              <div className="flex items-center justify-between text-sm text-zinc-500">
-                <span>
-                  {entry.workerName} · {entry.siteName}
+            <div key={entry.id} className="card">
+              <div className="flex items-center justify-between text-sm text-muted">
+                <span className="font-medium text-foreground">
+                  {entry.workerName} <span className="font-normal text-muted">· {entry.siteName}</span>
                 </span>
               </div>
               <p className="mt-2 text-sm">{entry.description}</p>
 
-              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {entry.materialOnSite && <Tag label="Materijal na gradilištu" />}
                 {entry.hasExtraPaidWork && <Tag label="Dodatni radovi za naplatu" />}
                 {entry.hasProblems && <Tag label="Problemi ili zastoji" tone="warn" />}
@@ -144,7 +146,7 @@ export default async function AdminEntriesPage({
                       key={url}
                       src={url}
                       alt=""
-                      className="h-20 w-20 rounded object-cover"
+                      className="h-20 w-20 rounded-lg object-cover"
                     />
                   ))}
                 </div>
@@ -158,15 +160,5 @@ export default async function AdminEntriesPage({
 }
 
 function Tag({ label, tone = "default" }: { label: string; tone?: "default" | "warn" }) {
-  return (
-    <span
-      className={
-        tone === "warn"
-          ? "rounded-full bg-amber-100 px-2 py-1 text-amber-800"
-          : "rounded-full bg-zinc-100 px-2 py-1 text-zinc-700"
-      }
-    >
-      {label}
-    </span>
-  );
+  return <span className={tone === "warn" ? "tag-warn" : "tag"}>{label}</span>;
 }

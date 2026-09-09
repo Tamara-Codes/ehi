@@ -13,10 +13,15 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Postavke</h1>
 
-      <form action={setNotificationTimeAction} className="flex flex-col gap-2">
-        <label htmlFor="time" className="text-sm font-medium">
-          Vrijeme dnevne obavijesti za radnike
-        </label>
+      <form action={setNotificationTimeAction} className="card flex flex-col gap-3">
+        <div>
+          <label htmlFor="time" className="field-label">
+            Vrijeme dnevne obavijesti za radnike
+          </label>
+          <p className="mb-3 text-xs text-muted">
+            Svakog dana u ovo vrijeme radnici će dobiti podsjetnik za unos dnevnog izvještaja.
+          </p>
+        </div>
         <div className="flex gap-2">
           <input
             id="time"
@@ -24,12 +29,9 @@ export default async function SettingsPage() {
             type="time"
             defaultValue={currentTime}
             required
-            className="rounded border border-zinc-300 px-2 py-1 text-sm"
+            className="field-input w-auto"
           />
-          <button
-            type="submit"
-            className="rounded bg-orange-500 px-3 py-1 text-sm font-medium text-white"
-          >
+          <button type="submit" className="btn-secondary bg-brand text-white hover:bg-brand-hover">
             Spremi
           </button>
         </div>

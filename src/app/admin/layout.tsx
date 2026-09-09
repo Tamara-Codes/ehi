@@ -10,16 +10,37 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await requireAdmin();
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      <nav className="mb-6 flex gap-4 border-b border-zinc-200 pb-3 text-sm font-medium">
-        <Link href="/admin">Unosi</Link>
-        <Link href="/admin/team">Radnici i gradilišta</Link>
-        <Link href="/admin/settings">Postavke</Link>
-        <Link href="/" className="ml-auto text-zinc-500">
-          Natrag na aplikaciju
-        </Link>
-      </nav>
-      {children}
+    <div className="min-h-screen">
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-brand uppercase">
+              EHI Babić
+            </p>
+            <h1 className="text-base font-semibold">Admin</h1>
+          </div>
+          <Link href="/" className="text-sm text-muted hover:text-foreground">
+            Natrag na aplikaciju
+          </Link>
+        </div>
+        <nav className="mx-auto flex max-w-3xl gap-1 px-6">
+          <AdminNavLink href="/admin">Unosi</AdminNavLink>
+          <AdminNavLink href="/admin/team">Radnici i gradilišta</AdminNavLink>
+          <AdminNavLink href="/admin/settings">Postavke</AdminNavLink>
+        </nav>
+      </header>
+      <main className="mx-auto max-w-3xl p-6">{children}</main>
     </div>
+  );
+}
+
+function AdminNavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted transition-colors hover:border-brand hover:text-foreground"
+    >
+      {children}
+    </Link>
   );
 }
