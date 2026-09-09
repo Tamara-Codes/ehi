@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { submitEntryAction } from "./actions";
 import { getSitesForUser } from "@/lib/repositories/sites.repo";
@@ -40,16 +41,23 @@ export default async function Home({
           <h1 className="text-lg font-semibold">Dnevnik radova</h1>
           <p className="text-sm text-zinc-500">{session.user.email}</p>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            await signOut();
-          }}
-        >
-          <button type="submit" className="text-sm text-zinc-500 underline">
-            Odjava
-          </button>
-        </form>
+        <div className="flex items-center gap-3">
+          {session.user.role === "admin" && (
+            <Link href="/admin" className="text-sm text-zinc-500 underline">
+              Admin
+            </Link>
+          )}
+          <form
+            action={async () => {
+              "use server";
+              await signOut();
+            }}
+          >
+            <button type="submit" className="text-sm text-zinc-500 underline">
+              Odjava
+            </button>
+          </form>
+        </div>
       </div>
 
       {saved && (
