@@ -135,7 +135,14 @@ export default async function Home({
             </div>
 
             <div className="card flex flex-col divide-y divide-border">
-              <ToggleRow name="materialOnSite" label="Je li sav materijal na gradilištu?" />
+              <ToggleRow
+                name="materialOnSite"
+                label="Je li sav materijal na gradilištu?"
+                defaultChecked
+                noteName="materialMissingNote"
+                notePlaceholder="Što nedostaje?"
+                noteWhen="unchecked"
+              />
               <ToggleRow
                 name="hasExtraPaidWork"
                 label="Ima li dodatnih radova za naplatu?"
@@ -171,21 +178,51 @@ function ToggleRow({
   label,
   noteName,
   notePlaceholder,
+  defaultChecked = false,
+  noteWhen = "checked",
 }: {
   name: string;
   label: string;
   noteName?: string;
   notePlaceholder?: string;
+  defaultChecked?: boolean;
+  noteWhen?: "checked" | "unchecked";
 }) {
+  // Most toggles reveal their note when switched ON (e.g. "problems?" ->
+  // describe the problem). materialOnSite is the opposite: its "good"
+  // state is ON, so its note ("what's missing?") only makes sense when
+  // it's OFF — noteWhen picks which CSS variant combination applies.
+  //
+  // Both branches use the same "hidden by default, reveal via variant"
+  // shape rather than the mirror image ("visible by default, hide via
+  // variant") — the latter rendered as a zero-height box in testing, so
+  // stick with the one actually proven to work. For the "unchecked" case,
+  // :not(:checked) must be scoped to input[type=checkbox] specifically —
+  // scoping it to just "input" still isn't enough, because the note field
+  // *itself* is an <input> and a descendant of .group, and a text input
+  // trivially satisfies :not(:checked) too (that pseudo-class isn't limited
+  // to checkboxes) — so :has(input:not(:checked)) matched unconditionally,
+  // against itself, regardless of the toggle's real state. Scoping to the
+  // checkbox's actual type excludes the note field from the match.
+  const noteVisibilityClass =
+    noteWhen === "checked"
+      ? "hidden group-has-[:checked]:block"
+      : "hidden group-has-[input[type=checkbox]:not(:checked)]:block";
+
   return (
-    // "group" here is what lets the note textarea below react to this
+    // "group" here is what lets the note input below react to this
     // toggle's checked state via group-has-[:checked]: — pure CSS, no
     // client-side JavaScript needed to show/hide it.
     <div className="group py-3 first:pt-0 last:pb-0">
       <label className="flex cursor-pointer items-center justify-between gap-4">
         <span className="text-sm">{label}</span>
         <span className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-border transition-colors has-[:checked]:bg-accent">
-          <input type="checkbox" name={name} className="peer sr-only" />
+          <input
+            type="checkbox"
+            name={name}
+            defaultChecked={defaultChecked}
+            className="peer sr-only"
+          />
           <span className="inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-[22px]" />
         </span>
       </label>
@@ -194,7 +231,7 @@ function ToggleRow({
           type="text"
           name={noteName}
           placeholder={notePlaceholder}
-          className="field-input mt-2 hidden group-has-[:checked]:block"
+          className={`field-input mt-2 ${noteVisibilityClass}`}
         />
       )}
     </div>

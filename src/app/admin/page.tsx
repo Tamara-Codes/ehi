@@ -129,11 +129,13 @@ export default async function AdminEntriesPage({
               </div>
               <p className="mt-2 text-sm">{entry.description}</p>
 
-              {entry.materialOnSite && (
-                <div className="mt-3">
+              <div className="mt-3">
+                {entry.materialOnSite ? (
                   <Tag label="Materijal na gradilištu" />
-                </div>
-              )}
+                ) : (
+                  <NoteLine label="Nedostaje materijal" note={entry.materialMissingNote} tone="warn" />
+                )}
+              </div>
 
               {(entry.hasExtraPaidWork || entry.hasProblems || entry.needsOrder) && (
                 <div className="mt-3 flex flex-col gap-2">

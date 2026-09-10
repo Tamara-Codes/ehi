@@ -36,6 +36,13 @@
       "when": 1788950404904,
       "tag": "0004_nebulous_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789061864456,
+      "tag": "0005_aromatic_strong_guy",
+      "breakpoints": true
     }
   ]
 }

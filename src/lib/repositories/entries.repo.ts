@@ -41,6 +41,7 @@ export async function getEntriesForDate(date: string) {
       entryDate: entries.entryDate,
       description: entries.description,
       materialOnSite: entries.materialOnSite,
+      materialMissingNote: entries.materialMissingNote,
       hasExtraPaidWork: entries.hasExtraPaidWork,
       extraPaidWorkNote: entries.extraPaidWorkNote,
       hasProblems: entries.hasProblems,

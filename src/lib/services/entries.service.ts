@@ -11,6 +11,7 @@ import { uploadEntryImage } from "@/lib/storage";
 const entryInputSchema = z.object({
   description: z.string().trim().min(1, "Description is required").max(2000),
   materialOnSite: z.boolean(),
+  materialMissingNote: z.string().trim().max(500).optional(),
   hasExtraPaidWork: z.boolean(),
   extraPaidWorkNote: z.string().trim().max(500).optional(),
   hasProblems: z.boolean(),
@@ -80,6 +81,9 @@ export async function createEntryForCurrentUser(
     entryDate: today,
     description: parsed.description,
     materialOnSite: parsed.materialOnSite,
+    // Inverted vs. the other three notes: this one is only meaningful when
+    // the toggle is OFF (something's missing), not when it's on.
+    materialMissingNote: !parsed.materialOnSite ? (parsed.materialMissingNote ?? null) : null,
     hasExtraPaidWork: parsed.hasExtraPaidWork,
     extraPaidWorkNote: parsed.hasExtraPaidWork ? (parsed.extraPaidWorkNote ?? null) : null,
     hasProblems: parsed.hasProblems,

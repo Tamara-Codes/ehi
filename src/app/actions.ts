@@ -23,6 +23,7 @@ export async function submitEntryAction(formData: FormData) {
     {
       description: String(formData.get("description") ?? ""),
       materialOnSite: formData.get("materialOnSite") === "on",
+      materialMissingNote: String(formData.get("materialMissingNote") ?? ""),
       hasExtraPaidWork: formData.get("hasExtraPaidWork") === "on",
       extraPaidWorkNote: String(formData.get("extraPaidWorkNote") ?? ""),
       hasProblems: formData.get("hasProblems") === "on",
