@@ -5,9 +5,9 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Dnevnik radova";
   const body = data.body || "";
 
-  // No custom icon yet — the browser falls back to its own default. Add an
-  // `icon: "/icon.png"` option here once the client has real branding assets.
-  event.waitUntil(self.registration.showNotification(title, { body }));
+  event.waitUntil(
+    self.registration.showNotification(title, { body, icon: "/icons/icon-192.png" }),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

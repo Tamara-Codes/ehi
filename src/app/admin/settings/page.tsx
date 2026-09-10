@@ -1,13 +1,14 @@
 import { requireAdmin } from "@/lib/auth-guards";
 import { getNotificationSettings } from "@/lib/services/admin.service";
 import { setNotificationScheduleAction } from "../actions";
+import { CustomSelect } from "@/components/CustomSelect";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
-const MINUTES = ["00", "15", "30", "45"];
+const HOURS = Array.from({ length: 24 }, (_, i) => ({ value: pad(i), label: pad(i) }));
+const MINUTES = ["00", "15", "30", "45"].map((m) => ({ value: m, label: m }));
 
 // value matches JS Date.getDay() (0=Sunday..6=Saturday); displayed
 // Monday-first to match the rest of the app's calendar convention.
@@ -40,25 +41,13 @@ export default async function SettingsPage() {
             izvještaja.
           </p>
           <div className="flex items-center gap-2">
-            <select name="hour" defaultValue={currentHour} className="field-select w-auto">
-              {HOURS.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
+            <CustomSelect name="hour" options={HOURS} defaultValue={currentHour} />
             <span className="text-muted">:</span>
-            <select
+            <CustomSelect
               name="minute"
-              defaultValue={MINUTES.includes(currentMinute) ? currentMinute : "00"}
-              className="field-select w-auto"
-            >
-              {MINUTES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              options={MINUTES}
+              defaultValue={MINUTES.some((m) => m.value === currentMinute) ? currentMinute : "00"}
+            />
           </div>
         </div>
 

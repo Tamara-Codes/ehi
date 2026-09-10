@@ -113,7 +113,11 @@ export default async function Home({
                     type="file"
                     accept="image/*"
                     multiple
-                    capture="environment"
+                    // No `capture` attribute: with it set, some Android
+                    // browsers open the camera directly and skip the
+                    // option to attach an existing photo from the
+                    // gallery. Omitting it lets both Android and iOS show
+                    // their normal picker (camera or library).
                     className="w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-border"
                   />
                   <p className="mt-2 text-xs text-muted">Do 6 slika, do 8MB svaka.</p>
