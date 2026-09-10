@@ -24,8 +24,9 @@ export async function getWorkers() {
   return listWorkers();
 }
 
-const emailSchema = z.string().trim().email();
-const nameSchema = z.string().trim().min(1).max(200);
+// Exported for direct unit testing — see admin.service.test.ts.
+export const emailSchema = z.string().trim().email();
+export const nameSchema = z.string().trim().min(1).max(200);
 
 export async function addWorker(email: string, name: string) {
   await requireAdmin();
@@ -65,8 +66,8 @@ export async function getNotificationSettings() {
   return getSettings();
 }
 
-const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time (HH:MM)");
-const daysSchema = z.array(z.number().int().min(0).max(6)).min(1, "Pick at least one day");
+export const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time (HH:MM)");
+export const daysSchema = z.array(z.number().int().min(0).max(6)).min(1, "Pick at least one day");
 
 export async function setNotificationSchedule(time: string, days: number[]) {
   await requireAdmin();
