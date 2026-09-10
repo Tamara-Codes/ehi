@@ -55,10 +55,16 @@ describe("subscriptionSchema (SSRF allowlist)", () => {
   });
 });
 
-// A Wednesday (JS Date.getDay() === 3), used as the baseline "today" across
-// these tests so day-of-week and time comparisons have a fixed reference.
+// A Wednesday (JS Date.getDay() === 3 in Zagreb, since Zagreb's date/day
+// don't cross a boundary vs. UTC at these hours), used as the baseline
+// "today" across these tests. Built as an explicit UTC instant (Zagreb is
+// UTC+2/CEST in September) rather than `new Date(y,m,d,h,mi)`, which is
+// interpreted in the *test-running machine's own* local timezone —
+// computeReminderDecision now converts through Europe/Zagreb explicitly
+// regardless of that, so the test needs to construct the instant the same
+// deterministic way (see businessDate.test.ts for the same pattern).
 function wednesdayAt(hour: number, minute: number) {
-  return new Date(2026, 8, 9, hour, minute); // 2026-09-09 was a Wednesday
+  return new Date(Date.UTC(2026, 8, 9, hour - 2, minute)); // 2026-09-09, CEST = UTC+2
 }
 
 const baseSettings: ReminderSettings = {

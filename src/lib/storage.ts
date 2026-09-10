@@ -1,3 +1,4 @@
+import "@/lib/loadEnv";
 import {
   S3Client,
   PutObjectCommand,
@@ -5,14 +6,6 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
-
-// Same self-sufficiency fix as lib/db/client.ts: Next.js loads .env.local
-// automatically, but standalone scripts run via `tsx` don't, so this module
-// loads it itself when needed. Harmless no-op under Next.js.
-if (!process.env.R2_ENDPOINT) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("dotenv").config({ path: ".env.local" });
-}
 
 // Cloudflare R2 speaks the same protocol as Amazon S3, so we use AWS's own
 // client library, just pointed at Cloudflare's endpoint instead of Amazon's.

@@ -15,7 +15,7 @@ import { getSettings, updateNotificationSchedule } from "@/lib/repositories/sett
 import {
   getEntryCountsForMonth,
   getEntriesForDate,
-  getImagesForEntry,
+  getImagesForEntries,
 } from "@/lib/repositories/entries.repo";
 import { getSignedImageUrl } from "@/lib/storage";
 
@@ -25,7 +25,16 @@ export async function getWorkers() {
 }
 
 // Exported for direct unit testing — see admin.service.test.ts.
-export const emailSchema = z.string().trim().email();
+// .toLowerCase() matters: Google's OAuth email claim is lowercase, and
+// admin-entered addresses shouldn't have to match it byte-for-byte or the
+// signIn allowlist check in auth.ts (a case-sensitive eq()) silently
+// blocks a legitimately-invited worker forever with no error explaining
+// why.
+export const emailSchema = z
+  .string()
+  .trim()
+  .email()
+  .transform((email) => email.toLowerCase());
 export const nameSchema = z.string().trim().min(1).max(200);
 
 export async function addWorker(email: string, name: string) {
@@ -94,9 +103,20 @@ export async function getEntriesForDay(date: string) {
   await requireAdmin();
   const entries = await getEntriesForDate(date);
 
+  // One batched query for every entry's images, instead of one query per
+  // entry — see getImagesForEntries's comment for why that matters on this
+  // driver.
+  const allImages = await getImagesForEntries(entries.map((e) => e.id));
+  const imagesByEntryId = new Map<number, typeof allImages>();
+  for (const image of allImages) {
+    const list = imagesByEntryId.get(image.entryId) ?? [];
+    list.push(image);
+    imagesByEntryId.set(image.entryId, list);
+  }
+
   return Promise.all(
     entries.map(async (entry) => {
-      const images = await getImagesForEntry(entry.id);
+      const images = imagesByEntryId.get(entry.id) ?? [];
       const imageUrls = await Promise.all(
         images.map((img) => getSignedImageUrl(img.storageKey)),
       );

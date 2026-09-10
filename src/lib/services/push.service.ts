@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { auth } from "@/auth";
 import {
   saveSubscription,
   deleteSubscriptionByEndpoint,
@@ -7,6 +6,8 @@ import {
 } from "@/lib/repositories/push.repo";
 import { getSettings, markNotifiedToday } from "@/lib/repositories/settings.repo";
 import { webpush } from "@/lib/webpush";
+import { businessDateString, businessDayOfWeek, businessTimeString } from "@/lib/businessDate";
+import { requireUser } from "@/lib/auth-guards";
 
 // Push endpoints only ever come from a real browser push service — this
 // allowlist is a defense-in-depth measure against SSRF: without it, an
@@ -47,8 +48,11 @@ export const subscriptionSchema = z.object({
 });
 
 export async function subscribeCurrentUser(rawSubscription: unknown) {
-  const session = await auth();
-  if (!session) throw new Error("Not authenticated");
+  // requireUser (not a bare auth() truthiness check) also rejects a
+  // deactivated worker whose session cookie is technically still valid —
+  // see auth-guards.ts for why that check has to live server-side, not
+  // just at login time.
+  const session = await requireUser();
 
   const sub = subscriptionSchema.parse(rawSubscription);
   return saveSubscription(session.user.id, sub.endpoint, sub.keys.p256dh, sub.keys.auth);
@@ -67,20 +71,25 @@ export type ReminderDecision =
 // Pure decision logic, deliberately separated from the DB/network calls in
 // sendDailyReminderIfDue below — this is what makes it unit-testable
 // without a live database or an actual push send.
+//
+// Everything here derives from businessDate helpers (Europe/Zagreb local
+// time), not the server process's own timezone or raw UTC — the admin's
+// "16:00" and notifyDays selections mean Zagreb local time, and the server
+// (Vercel, defaulting to UTC) has no reason to agree with that on its own.
 export function computeReminderDecision(
   settings: ReminderSettings,
   now: Date,
 ): ReminderDecision {
-  const today = now.toISOString().slice(0, 10);
+  const today = businessDateString(now);
   if (settings.lastNotifiedDate === today) {
     return { due: false, reason: "already-sent-today" };
   }
 
-  if (!settings.notifyDays.includes(now.getDay())) {
+  if (!settings.notifyDays.includes(businessDayOfWeek(now))) {
     return { due: false, reason: "not-a-notify-day" };
   }
 
-  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const currentTime = businessTimeString(now);
   const targetTime = settings.notificationTime.slice(0, 5);
 
   if (currentTime < targetTime) {
@@ -97,7 +106,7 @@ export function computeReminderDecision(
 export async function sendDailyReminderIfDue() {
   const settings = await getSettings();
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = businessDateString(now);
 
   const decision = computeReminderDecision(settings, now);
   if (!decision.due) {
@@ -111,6 +120,7 @@ export async function sendDailyReminderIfDue() {
   });
 
   let succeeded = 0;
+  let unexpectedFailures = 0;
   await Promise.all(
     subscriptions.map(async (sub) => {
       try {
@@ -125,12 +135,34 @@ export async function sendDailyReminderIfDue() {
         const statusCode = (err as { statusCode?: number })?.statusCode;
         if (statusCode === 404 || statusCode === 410) {
           await deleteSubscriptionByEndpoint(sub.endpoint);
+        } else {
+          // Anything else (misconfigured VAPID keys, network failure, the
+          // push service being down) is a real, actionable failure — log it
+          // rather than swallowing it silently, so a fully-broken push
+          // pipeline actually surfaces somewhere (Vercel's function logs).
+          unexpectedFailures++;
+          console.error("Push notification failed for subscription", sub.id, err);
         }
       }
     }),
   );
 
-  await markNotifiedToday(today);
+  // Only mark today as "done" if we either had nothing to send (nothing to
+  // retry) or actually got at least one through. If there were subscriptions
+  // and every single one failed for a non-404/410 reason, that's very
+  // possibly a systemic outage (e.g. bad VAPID keys) rather than a
+  // one-off — leave lastNotifiedDate unset so the next cron run (a few
+  // minutes later) retries instead of silently giving up on the whole day.
+  const shouldMarkDone = subscriptions.length === 0 || succeeded > 0;
+  if (shouldMarkDone) {
+    await markNotifiedToday(today);
+  }
 
-  return { sent: true, succeeded, total: subscriptions.length } as const;
+  return {
+    sent: true,
+    succeeded,
+    total: subscriptions.length,
+    unexpectedFailures,
+    markedDone: shouldMarkDone,
+  } as const;
 }

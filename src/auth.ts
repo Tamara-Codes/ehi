@@ -18,10 +18,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user }) {
       if (!user.email) return false;
 
+      // Lowercase on both sides: workers are pre-registered by the admin
+      // via admin.service.ts's emailSchema, which already lowercases on
+      // write — this comparison-side normalization is defense-in-depth for
+      // any row written before that existed, or if Google's own email
+      // claim is ever not already lowercase for some account.
       const [existing] = await db
         .select()
         .from(users)
-        .where(eq(users.email, user.email));
+        .where(eq(users.email, user.email.toLowerCase()));
 
       if (!existing) {
         // Not pre-registered by the admin — deny access.
@@ -52,7 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const [existing] = await db
           .select()
           .from(users)
-          .where(eq(users.email, user.email));
+          .where(eq(users.email, user.email.toLowerCase()));
 
         if (existing) {
           token.userId = existing.id;

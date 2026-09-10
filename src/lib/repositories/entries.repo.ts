@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
 import { entries, entryImages, users, sites } from "@/lib/db/schema";
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 // A repository only knows how to read/write rows — no auth checks, no
 // business rules. That logic lives one layer up, in the service.
@@ -61,4 +61,14 @@ export async function getEntriesForDate(date: string) {
 
 export async function getImagesForEntry(entryId: number) {
   return db.select().from(entryImages).where(eq(entryImages.entryId, entryId));
+}
+
+// Same data as calling getImagesForEntry once per entry, but in a single
+// round-trip instead of N — matters because the neon-http driver makes
+// every query its own HTTP request (no pooling), so an admin dashboard
+// showing a day with many entries would otherwise fire off that many
+// concurrent requests just to fetch photos.
+export async function getImagesForEntries(entryIds: number[]) {
+  if (entryIds.length === 0) return [];
+  return db.select().from(entryImages).where(inArray(entryImages.entryId, entryIds));
 }

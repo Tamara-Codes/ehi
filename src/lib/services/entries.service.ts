@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { userSites } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { insertEntry, insertEntryImages } from "@/lib/repositories/entries.repo";
 import { uploadEntryImage } from "@/lib/storage";
 import { matchesImageSignature } from "@/lib/imageSignature";
+import { businessDateString } from "@/lib/businessDate";
+import { requireUser } from "@/lib/auth-guards";
 
 // Validates the shape/size of what the client sent us, before it's trusted
 // anywhere else. This is the boundary check from our security plan.
@@ -50,11 +51,11 @@ export async function createEntryForCurrentUser(
 ) {
   // Everything here derives from the server-side session, never from
   // anything the client claims — this is the "row-level scoping in
-  // services, not trust in the client" rule from earlier.
-  const session = await auth();
-  if (!session) {
-    throw new Error("Not authenticated");
-  }
+  // services, not trust in the client" rule from earlier. requireUser (not
+  // a bare auth() check) also re-verifies the worker is still active, so a
+  // deactivated worker can't keep submitting entries on a still-valid
+  // session cookie — see auth-guards.ts.
+  const session = await requireUser();
 
   const parsed = entryInputSchema.parse(input);
 
@@ -79,24 +80,30 @@ export async function createEntryForCurrentUser(
   if (images.length > MAX_IMAGES) {
     throw new Error(`Too many images (max ${MAX_IMAGES})`);
   }
-  const imageBuffers: Buffer[] = [];
-  for (const image of images) {
-    if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
-      throw new Error(`Unsupported image type: ${image.type}`);
-    }
-    if (image.size > MAX_IMAGE_BYTES) {
-      throw new Error(`Image too large (max ${MAX_IMAGE_BYTES / 1024 / 1024}MB)`);
-    }
-    const buffer = Buffer.from(await image.arrayBuffer());
-    if (!matchesImageSignature(buffer, image.type)) {
-      throw new Error(`File content doesn't match declared type: ${image.type}`);
-    }
-    imageBuffers.push(buffer);
-  }
+  // These reads/checks don't depend on each other, so run them concurrently
+  // rather than one-at-a-time — matters for the upload loop below more than
+  // here (no network I/O in this part), but keeps the two loops consistent.
+  const imageBuffers: Buffer[] = await Promise.all(
+    images.map(async (image) => {
+      if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
+        throw new Error(`Unsupported image type: ${image.type}`);
+      }
+      if (image.size > MAX_IMAGE_BYTES) {
+        throw new Error(`Image too large (max ${MAX_IMAGE_BYTES / 1024 / 1024}MB)`);
+      }
+      const buffer = Buffer.from(await image.arrayBuffer());
+      if (!matchesImageSignature(buffer, image.type)) {
+        throw new Error(`File content doesn't match declared type: ${image.type}`);
+      }
+      return buffer;
+    }),
+  );
 
   // entryDate is today's date, set here on the server — never something the
   // client is allowed to pick, so nobody can backdate/forward-date an entry.
-  const today = new Date().toISOString().slice(0, 10);
+  // businessDateString (not toISOString/UTC) so a worker submitting near
+  // midnight local time gets today's actual local date, not UTC's.
+  const today = businessDateString(new Date());
 
   const noteFields = deriveNoteFields(parsed);
 
@@ -112,11 +119,13 @@ export async function createEntryForCurrentUser(
     ...noteFields,
   });
 
-  const storageKeys: string[] = [];
-  for (let i = 0; i < images.length; i++) {
-    const key = await uploadEntryImage(entry.id, imageBuffers[i], images[i].type);
-    storageKeys.push(key);
-  }
+  // Each upload is an independent network round-trip to R2 — running them
+  // concurrently instead of one-at-a-time matters here, since a worker with
+  // several photos would otherwise sit through N sequential upload
+  // latencies on the entry-submission hot path.
+  const storageKeys = await Promise.all(
+    imageBuffers.map((buffer, i) => uploadEntryImage(entry.id, buffer, images[i].type)),
+  );
   await insertEntryImages(entry.id, storageKeys);
 
   return entry;
