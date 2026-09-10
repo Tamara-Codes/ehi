@@ -21,19 +21,22 @@ async function assignSite(userId: number, siteId: number) {
   await db.insert(userSites).values({ userId, siteId });
 }
 
+async function ensureAdmin(email: string, name: string) {
+  await db
+    .insert(users)
+    .values({ email, name, role: "admin", status: "active" })
+    .onConflictDoNothing();
+}
+
 async function seed() {
   const siteA = await getOrCreateSite("Gradilište Sesvete");
   const siteB = await getOrCreateSite("Dugo Selo 2");
 
-  await db
-    .insert(users)
-    .values({
-      email: "codewithtamara@gmail.com",
-      name: "Tamara (admin, dev)",
-      role: "admin",
-      status: "active",
-    })
-    .onConflictDoNothing();
+  // Eugen Babić — the client, real admin of the app.
+  await ensureAdmin("ehibabic236@gmail.com", "Eugen Babić");
+
+  // Kept as a second admin for ongoing dev/testing alongside Eugen.
+  await ensureAdmin("codewithtamara@gmail.com", "Tamara (admin, dev)");
 
   const [testUser] = await db
     .select()
@@ -43,7 +46,7 @@ async function seed() {
   await assignSite(testUser.id, siteA.id);
   await assignSite(testUser.id, siteB.id);
 
-  console.log("Seeded sites + admin user, assigned to:", siteA.name, "&", siteB.name);
+  console.log("Seeded sites + admins (Eugen Babić, Tamara dev).");
 }
 
 seed().then(() => process.exit(0));
