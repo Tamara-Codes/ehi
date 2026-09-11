@@ -30,12 +30,14 @@ export default async function TeamPage() {
             <p className="text-sm text-muted">Još nema dodanih radnika.</p>
           )}
           {workers.map((worker) => (
-            <div key={worker.id} className="card flex items-center justify-between">
-              <div>
+            <div
+              key={worker.id}
+              className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex flex-col gap-1.5">
                 <p className="text-sm font-medium">{worker.name}</p>
-                <p className="text-xs text-muted">
-                  {worker.email} · <StatusBadge status={worker.status} />
-                </p>
+                <p className="text-xs text-muted break-all">{worker.email}</p>
+                <StatusBadge status={worker.status} />
               </div>
               <form action={toggleWorkerStatusAction}>
                 <input type="hidden" name="userId" value={worker.id} />
@@ -44,7 +46,7 @@ export default async function TeamPage() {
                   name="status"
                   value={worker.status === "active" ? "inactive" : "active"}
                 />
-                <button type="submit" className="btn-secondary">
+                <button type="submit" className="btn-secondary w-full sm:w-auto">
                   {worker.status === "active" ? "Deaktiviraj" : "Aktiviraj"}
                 </button>
               </form>
@@ -87,5 +89,11 @@ function StatusBadge({ status }: { status: string }) {
     invited: "pozvan",
     inactive: "neaktivan",
   };
-  return <span>{labels[status] ?? status}</span>;
+  const className =
+    status === "active"
+      ? "w-fit rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent"
+      : status === "inactive"
+        ? "tag-warn w-fit"
+        : "tag w-fit";
+  return <span className={className}>{labels[status] ?? status}</span>;
 }
