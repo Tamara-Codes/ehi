@@ -5,12 +5,7 @@ import {
   inviteWorker,
   setWorkerStatus,
 } from "@/lib/repositories/users.repo";
-import {
-  getAllSites,
-  createSite,
-  assignWorkerToSite,
-  unassignWorkerFromSite,
-} from "@/lib/repositories/sites.repo";
+import { getAllSites, createSite } from "@/lib/repositories/sites.repo";
 import { getSettings, updateNotificationSchedule } from "@/lib/repositories/settings.repo";
 import {
   getEntryCountsForMonth,
@@ -58,16 +53,6 @@ export async function addSite(name: string) {
   await requireAdmin();
   const validName = nameSchema.parse(name);
   return createSite(validName);
-}
-
-export async function assignSite(userId: number, siteId: number) {
-  await requireAdmin();
-  return assignWorkerToSite(userId, siteId);
-}
-
-export async function unassignSite(userId: number, siteId: number) {
-  await requireAdmin();
-  return unassignWorkerFromSite(userId, siteId);
 }
 
 export async function getNotificationSettings() {

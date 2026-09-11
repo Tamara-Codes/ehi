@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { userSites } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { sites } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { insertEntry, insertEntryImages } from "@/lib/repositories/entries.repo";
 import { uploadEntryImage } from "@/lib/storage";
 import { matchesImageSignature } from "@/lib/imageSignature";
@@ -60,16 +60,13 @@ export async function createEntryForCurrentUser(
   const parsed = entryInputSchema.parse(input);
 
   // The client picked a site pill in the UI, but we don't trust that value
-  // blindly — confirm this worker is actually assigned to it, so nobody can
-  // submit an entry against a site they don't belong to just by tampering
-  // with the form.
-  const [assignment] = await db
-    .select()
-    .from(userSites)
-    .where(and(eq(userSites.userId, session.user.id), eq(userSites.siteId, siteId)));
-
-  if (!assignment) {
-    throw new Error("Not assigned to this site");
+  // blindly — every active worker can pick any site (no per-worker
+  // assignment), but the siteId itself still needs to be a real row, not
+  // an arbitrary/spoofed number that would violate the entries table's
+  // foreign key at insert time with a less clear error.
+  const [site] = await db.select().from(sites).where(eq(sites.id, siteId));
+  if (!site) {
+    throw new Error("Site not found");
   }
 
   // Reject bad images before anything touches R2 or the database — the

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { submitEntryAction } from "./actions";
-import { getSitesForUser } from "@/lib/repositories/sites.repo";
+import { getAllSites } from "@/lib/repositories/sites.repo";
 import { EnablePushButton } from "@/components/EnablePushButton";
 
 export default async function Home({
@@ -35,7 +35,10 @@ export default async function Home({
     );
   }
 
-  const sites = await getSitesForUser(session.user.id);
+  // Every active worker can pick from every site — there's no per-worker
+  // assignment anymore, matching how the site pills already worked in
+  // practice: whichever gradilište is relevant today, pick it and go.
+  const sites = await getAllSites();
 
   return (
     <div className="min-h-screen">
@@ -78,7 +81,7 @@ export default async function Home({
 
         {sites.length === 0 ? (
           <div className="card text-sm text-muted">
-            Nemate dodijeljeno gradilište. Obratite se administratoru.
+            Još nema dodanih gradilišta. Obratite se administratoru.
           </div>
         ) : (
           <form action={submitEntryAction} className="flex flex-col gap-4">

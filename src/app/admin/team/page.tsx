@@ -1,13 +1,6 @@
 import { requireAdmin } from "@/lib/auth-guards";
 import { getWorkers, getSites } from "@/lib/services/admin.service";
-import {
-  addWorkerAction,
-  toggleWorkerStatusAction,
-  addSiteAction,
-  assignSiteAction,
-  unassignSiteAction,
-} from "../actions";
-import { CustomSelect } from "@/components/CustomSelect";
+import { addWorkerAction, toggleWorkerStatusAction, addSiteAction } from "../actions";
 
 export default async function TeamPage() {
   await requireAdmin();
@@ -36,78 +29,35 @@ export default async function TeamPage() {
           {workers.length === 0 && (
             <p className="text-sm text-muted">Još nema dodanih radnika.</p>
           )}
-          {workers.map((worker) => {
-            const availableSites = sites.filter(
-              (s) => !worker.sites.some((ws) => ws.siteId === s.id),
-            );
-            return (
-              <div key={worker.id} className="card">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{worker.name}</p>
-                    <p className="text-xs text-muted">
-                      {worker.email} · <StatusBadge status={worker.status} />
-                    </p>
-                  </div>
-                  <form action={toggleWorkerStatusAction}>
-                    <input type="hidden" name="userId" value={worker.id} />
-                    <input
-                      type="hidden"
-                      name="status"
-                      value={worker.status === "active" ? "inactive" : "active"}
-                    />
-                    <button type="submit" className="btn-secondary">
-                      {worker.status === "active" ? "Deaktiviraj" : "Aktiviraj"}
-                    </button>
-                  </form>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {worker.sites.map((s) => (
-                    <span key={s.siteId} className="tag flex items-center gap-1.5">
-                      {s.siteName}
-                      <form action={unassignSiteAction} className="inline">
-                        <input type="hidden" name="userId" value={worker.id} />
-                        <input type="hidden" name="siteId" value={s.siteId} />
-                        <button
-                          type="submit"
-                          aria-label="Ukloni"
-                          className="text-muted hover:text-foreground"
-                        >
-                          ×
-                        </button>
-                      </form>
-                    </span>
-                  ))}
-
-                  {availableSites.length > 0 && (
-                    <form action={assignSiteAction} className="flex items-center gap-1.5">
-                      <input type="hidden" name="userId" value={worker.id} />
-                      <CustomSelect
-                        name="siteId"
-                        size="sm"
-                        options={availableSites.map((s) => ({
-                          value: String(s.id),
-                          label: s.name,
-                        }))}
-                      />
-                      <button
-                        type="submit"
-                        className="text-xs font-medium text-brand hover:text-brand-hover"
-                      >
-                        Dodaj
-                      </button>
-                    </form>
-                  )}
-                </div>
+          {workers.map((worker) => (
+            <div key={worker.id} className="card flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{worker.name}</p>
+                <p className="text-xs text-muted">
+                  {worker.email} · <StatusBadge status={worker.status} />
+                </p>
               </div>
-            );
-          })}
+              <form action={toggleWorkerStatusAction}>
+                <input type="hidden" name="userId" value={worker.id} />
+                <input
+                  type="hidden"
+                  name="status"
+                  value={worker.status === "active" ? "inactive" : "active"}
+                />
+                <button type="submit" className="btn-secondary">
+                  {worker.status === "active" ? "Deaktiviraj" : "Aktiviraj"}
+                </button>
+              </form>
+            </div>
+          ))}
         </div>
       </section>
 
       <section>
         <h2 className="mb-4 text-lg font-semibold">Gradilišta</h2>
+        <p className="mb-3 text-xs text-muted">
+          Svaki radnik sam bira gradilište u aplikaciji — ovdje samo upravljate popisom.
+        </p>
         <form action={addSiteAction} className="card mb-4 flex gap-2">
           <input
             name="name"

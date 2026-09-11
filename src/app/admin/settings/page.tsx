@@ -22,9 +22,14 @@ const DAYS = [
   { value: 0, label: "Ned" },
 ];
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: string }>;
+}) {
   await requireAdmin();
   const settings = await getNotificationSettings();
+  const { saved } = await searchParams;
   // notificationTime comes back as "HH:MM:SS" from Postgres.
   const [currentHour, currentMinute] = settings.notificationTime.slice(0, 5).split(":");
   const activeDays = new Set(settings.notifyDays);
@@ -32,6 +37,12 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Postavke</h1>
+
+      {saved && (
+        <div className="rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+          ✓ Postavke spremljene.
+        </div>
+      )}
 
       <form action={setNotificationScheduleAction} className="card flex flex-col gap-4">
         <div>

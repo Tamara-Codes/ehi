@@ -4,6 +4,7 @@ import {
   getEntryCountsForCalendarMonth,
   getEntriesForDay,
 } from "@/lib/services/admin.service";
+import { ImageGallery } from "@/components/ImageGallery";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -100,10 +101,16 @@ export default async function AdminEntriesPage({
               >
                 <span>{day}</span>
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    count > 0 ? (isSelected ? "bg-white" : "bg-brand") : "bg-transparent"
+                  className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-semibold ${
+                    count > 0
+                      ? isSelected
+                        ? "bg-white text-foreground"
+                        : "bg-brand text-white"
+                      : "invisible"
                   }`}
-                />
+                >
+                  {count}
+                </span>
               </Link>
             );
           })}
@@ -151,21 +158,7 @@ export default async function AdminEntriesPage({
                 </div>
               )}
 
-              {entry.imageUrls.length > 0 && (
-                <div className="mt-3 flex gap-2 overflow-x-auto">
-                  {entry.imageUrls.map((url) => (
-                    // Signed, short-lived R2 URLs aren't a fit for next/image's
-                    // remote optimizer allowlist; a plain <img> is correct here.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={url}
-                      src={url}
-                      alt=""
-                      className="h-20 w-20 rounded-lg object-cover"
-                    />
-                  ))}
-                </div>
-              )}
+              {entry.imageUrls.length > 0 && <ImageGallery urls={entry.imageUrls} />}
             </div>
           ))}
         </div>

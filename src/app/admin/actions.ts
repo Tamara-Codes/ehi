@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   addWorker,
   updateWorkerStatus,
   addSite,
-  assignSite,
-  unassignSite,
   setNotificationSchedule,
 } from "@/lib/services/admin.service";
 
@@ -30,20 +29,6 @@ export async function addSiteAction(formData: FormData) {
   revalidatePath("/admin/team");
 }
 
-export async function assignSiteAction(formData: FormData) {
-  const userId = Number(formData.get("userId"));
-  const siteId = Number(formData.get("siteId"));
-  await assignSite(userId, siteId);
-  revalidatePath("/admin/team");
-}
-
-export async function unassignSiteAction(formData: FormData) {
-  const userId = Number(formData.get("userId"));
-  const siteId = Number(formData.get("siteId"));
-  await unassignSite(userId, siteId);
-  revalidatePath("/admin/team");
-}
-
 export async function setNotificationScheduleAction(formData: FormData) {
   const hour = String(formData.get("hour") ?? "").padStart(2, "0");
   const minute = String(formData.get("minute") ?? "").padStart(2, "0");
@@ -52,4 +37,5 @@ export async function setNotificationScheduleAction(formData: FormData) {
   const days = formData.getAll("days").map(Number);
   await setNotificationSchedule(`${hour}:${minute}`, days);
   revalidatePath("/admin/settings");
+  redirect("/admin/settings?saved=1");
 }
