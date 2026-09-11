@@ -5,7 +5,7 @@ import {
   inviteWorker,
   setWorkerStatus,
 } from "@/lib/repositories/users.repo";
-import { getAllSites, createSite } from "@/lib/repositories/sites.repo";
+import { getAllSites, createSite, deleteSite } from "@/lib/repositories/sites.repo";
 import { getSettings, updateNotificationSchedule } from "@/lib/repositories/settings.repo";
 import {
   getEntryCountsForMonth,
@@ -53,6 +53,24 @@ export async function addSite(name: string) {
   await requireAdmin();
   const validName = nameSchema.parse(name);
   return createSite(validName);
+}
+
+export async function removeSite(id: number) {
+  await requireAdmin();
+  try {
+    await deleteSite(id);
+  } catch (err: unknown) {
+    // Postgres error code 23503 = foreign key violation — thrown when
+    // entries still reference this site (no ON DELETE CASCADE, on
+    // purpose: deleting a site should never silently orphan or wipe out
+    // a worker's past reports). Surface a clear reason instead of a raw
+    // DB error.
+    const code = (err as { code?: string })?.code;
+    if (code === "23503") {
+      throw new Error("Ovo gradilište ima povezane unose i ne može se obrisati.");
+    }
+    throw err;
+  }
 }
 
 export async function getNotificationSettings() {

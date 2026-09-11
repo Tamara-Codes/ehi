@@ -6,6 +6,7 @@ import {
   addWorker,
   updateWorkerStatus,
   addSite,
+  removeSite,
   setNotificationSchedule,
 } from "@/lib/services/admin.service";
 
@@ -26,6 +27,17 @@ export async function toggleWorkerStatusAction(formData: FormData) {
 
 export async function addSiteAction(formData: FormData) {
   await addSite(String(formData.get("name") ?? ""));
+  revalidatePath("/admin/team");
+}
+
+export async function deleteSiteAction(formData: FormData) {
+  const id = Number(formData.get("siteId"));
+  try {
+    await removeSite(id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Greška pri brisanju.";
+    redirect(`/admin/team?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath("/admin/team");
 }
 

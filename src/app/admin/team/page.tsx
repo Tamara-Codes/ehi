@@ -1,10 +1,20 @@
 import { requireAdmin } from "@/lib/auth-guards";
 import { getWorkers, getSites } from "@/lib/services/admin.service";
-import { addWorkerAction, toggleWorkerStatusAction, addSiteAction } from "../actions";
+import {
+  addWorkerAction,
+  toggleWorkerStatusAction,
+  addSiteAction,
+  deleteSiteAction,
+} from "../actions";
 
-export default async function TeamPage() {
+export default async function TeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   await requireAdmin();
   const [workers, sites] = await Promise.all([getWorkers(), getSites()]);
+  const { error } = await searchParams;
 
   return (
     <div className="flex flex-col gap-10">
@@ -60,6 +70,13 @@ export default async function TeamPage() {
         <p className="mb-3 text-xs text-muted">
           Svaki radnik sam bira gradilište u aplikaciji — ovdje samo upravljate popisom.
         </p>
+
+        {error && (
+          <div className="mb-3 rounded-xl bg-amber-100 px-4 py-3 text-sm text-amber-800">
+            {error}
+          </div>
+        )}
+
         <form action={addSiteAction} className="card mb-4 flex gap-2">
           <input
             name="name"
@@ -71,11 +88,28 @@ export default async function TeamPage() {
             Dodaj
           </button>
         </form>
-        <div className="flex flex-wrap gap-2">
-          {sites.map((s) => (
-            <span key={s.id} className="tag">
-              {s.name}
-            </span>
+
+        <div className="card flex flex-col divide-y divide-border">
+          {sites.length === 0 && (
+            <p className="text-sm text-muted">Još nema dodanih gradilišta.</p>
+          )}
+          {sites.map((site) => (
+            <div
+              key={site.id}
+              className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+            >
+              <span className="text-sm">{site.name}</span>
+              <form action={deleteSiteAction}>
+                <input type="hidden" name="siteId" value={site.id} />
+                <button
+                  type="submit"
+                  className="text-xs text-muted hover:text-foreground"
+                  aria-label={`Ukloni ${site.name}`}
+                >
+                  Ukloni
+                </button>
+              </form>
+            </div>
           ))}
         </div>
       </section>
