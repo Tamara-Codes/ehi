@@ -3,9 +3,11 @@ import { getWorkers, getSites } from "@/lib/services/admin.service";
 import {
   addWorkerAction,
   toggleWorkerStatusAction,
+  deleteWorkerAction,
   addSiteAction,
   deleteSiteAction,
 } from "../actions";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 
 export default async function TeamPage({
   searchParams,
@@ -49,17 +51,28 @@ export default async function TeamPage({
                 <p className="text-xs text-muted break-all">{worker.email}</p>
                 <StatusBadge status={worker.status} />
               </div>
-              <form action={toggleWorkerStatusAction}>
-                <input type="hidden" name="userId" value={worker.id} />
-                <input
-                  type="hidden"
-                  name="status"
-                  value={worker.status === "active" ? "inactive" : "active"}
-                />
-                <button type="submit" className="btn-secondary w-full sm:w-auto">
-                  {worker.status === "active" ? "Deaktiviraj" : "Aktiviraj"}
-                </button>
-              </form>
+              <div className="flex items-center gap-3">
+                <form action={deleteWorkerAction}>
+                  <input type="hidden" name="userId" value={worker.id} />
+                  <ConfirmSubmitButton
+                    confirmMessage={`Obrisati radnika ${worker.name}? Ova radnja se ne može poništiti.`}
+                    className="text-xs text-muted hover:text-foreground"
+                  >
+                    Ukloni
+                  </ConfirmSubmitButton>
+                </form>
+                <form action={toggleWorkerStatusAction}>
+                  <input type="hidden" name="userId" value={worker.id} />
+                  <input
+                    type="hidden"
+                    name="status"
+                    value={worker.status === "active" ? "inactive" : "active"}
+                  />
+                  <button type="submit" className="btn-secondary w-full sm:w-auto">
+                    {worker.status === "active" ? "Deaktiviraj" : "Aktiviraj"}
+                  </button>
+                </form>
+              </div>
             </div>
           ))}
         </div>
@@ -101,13 +114,13 @@ export default async function TeamPage({
               <span className="text-sm">{site.name}</span>
               <form action={deleteSiteAction}>
                 <input type="hidden" name="siteId" value={site.id} />
-                <button
-                  type="submit"
+                <ConfirmSubmitButton
+                  confirmMessage={`Obrisati gradilište "${site.name}"?`}
                   className="text-xs text-muted hover:text-foreground"
                   aria-label={`Ukloni ${site.name}`}
                 >
                   Ukloni
-                </button>
+                </ConfirmSubmitButton>
               </form>
             </div>
           ))}

@@ -18,3 +18,7 @@ export async function inviteWorker(email: string, name: string) {
 export async function setWorkerStatus(userId: number, status: "active" | "inactive") {
   await db.update(users).set({ status }).where(eq(users.id, userId));
 }
+
+export async function deleteWorker(userId: number) {
+  await db.delete(users).where(eq(users.id, userId));
+}

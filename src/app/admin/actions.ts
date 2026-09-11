@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   addWorker,
   updateWorkerStatus,
+  removeWorker,
   addSite,
   removeSite,
   setNotificationSchedule,
@@ -22,6 +23,17 @@ export async function toggleWorkerStatusAction(formData: FormData) {
   const userId = Number(formData.get("userId"));
   const status = formData.get("status") === "active" ? "active" : "inactive";
   await updateWorkerStatus(userId, status);
+  revalidatePath("/admin/team");
+}
+
+export async function deleteWorkerAction(formData: FormData) {
+  const userId = Number(formData.get("userId"));
+  try {
+    await removeWorker(userId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Greška pri brisanju.";
+    redirect(`/admin/team?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath("/admin/team");
 }
 

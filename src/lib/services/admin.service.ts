@@ -4,8 +4,27 @@ import {
   listWorkers,
   inviteWorker,
   setWorkerStatus,
+  deleteWorker,
 } from "@/lib/repositories/users.repo";
 import { getAllSites, createSite, deleteSite } from "@/lib/repositories/sites.repo";
+
+// Postgres error code 23503 = foreign key violation. Deleting a worker or a
+// site both have the same shape of problem: if any entries still reference
+// them, the delete should fail with a clear reason rather than either a raw
+// DB error or (worse) silently cascading and wiping out historical reports
+// — so ON DELETE is left as the default RESTRICT everywhere, and this is
+// the one place that turns that specific failure into a friendly message.
+async function deleteOrExplainFkViolation(action: () => Promise<void>, friendlyMessage: string) {
+  try {
+    await action();
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code;
+    if (code === "23503") {
+      throw new Error(friendlyMessage);
+    }
+    throw err;
+  }
+}
 import { getSettings, updateNotificationSchedule } from "@/lib/repositories/settings.repo";
 import {
   getEntryCountsForMonth,
@@ -57,20 +76,18 @@ export async function addSite(name: string) {
 
 export async function removeSite(id: number) {
   await requireAdmin();
-  try {
-    await deleteSite(id);
-  } catch (err: unknown) {
-    // Postgres error code 23503 = foreign key violation — thrown when
-    // entries still reference this site (no ON DELETE CASCADE, on
-    // purpose: deleting a site should never silently orphan or wipe out
-    // a worker's past reports). Surface a clear reason instead of a raw
-    // DB error.
-    const code = (err as { code?: string })?.code;
-    if (code === "23503") {
-      throw new Error("Ovo gradilište ima povezane unose i ne može se obrisati.");
-    }
-    throw err;
-  }
+  await deleteOrExplainFkViolation(
+    () => deleteSite(id),
+    "Ovo gradilište ima povezane unose i ne može se obrisati.",
+  );
+}
+
+export async function removeWorker(userId: number) {
+  await requireAdmin();
+  await deleteOrExplainFkViolation(
+    () => deleteWorker(userId),
+    "Ovaj radnik ima povezane unose i ne može se obrisati — umjesto toga ga deaktivirajte.",
+  );
 }
 
 export async function getNotificationSettings() {
