@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { sendDailyReminderIfDue } from "@/lib/services/push.service";
+import { sendDueReminders } from "@/lib/services/push.service";
 
 // Plain !== comparison is vulnerable in principle to a timing side-channel
 // (it returns as soon as the first differing byte is found, so response
@@ -27,6 +27,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await sendDailyReminderIfDue();
-  return NextResponse.json(result);
+  const results = await sendDueReminders();
+  return NextResponse.json({ results });
 }

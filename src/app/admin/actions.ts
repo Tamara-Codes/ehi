@@ -8,7 +8,9 @@ import {
   removeWorker,
   addSite,
   removeSite,
-  setNotificationSchedule,
+  addSchedule,
+  editSchedule,
+  removeSchedule,
 } from "@/lib/services/admin.service";
 
 export async function addWorkerAction(formData: FormData) {
@@ -53,13 +55,36 @@ export async function deleteSiteAction(formData: FormData) {
   revalidatePath("/admin/team");
 }
 
-export async function setNotificationScheduleAction(formData: FormData) {
+function scheduleFieldsFrom(formData: FormData) {
   const hour = String(formData.get("hour") ?? "").padStart(2, "0");
   const minute = String(formData.get("minute") ?? "").padStart(2, "0");
   // Checkboxes only appear in FormData when checked, one entry per checked
   // day — getAll collects all of them at once.
   const days = formData.getAll("days").map(Number);
-  await setNotificationSchedule(`${hour}:${minute}`, days);
+  return {
+    message: String(formData.get("message") ?? ""),
+    time: `${hour}:${minute}`,
+    days,
+  };
+}
+
+export async function addScheduleAction(formData: FormData) {
+  const { message, time, days } = scheduleFieldsFrom(formData);
+  await addSchedule(message, time, days);
   revalidatePath("/admin/settings");
   redirect("/admin/settings?saved=1");
+}
+
+export async function editScheduleAction(formData: FormData) {
+  const id = Number(formData.get("scheduleId"));
+  const { message, time, days } = scheduleFieldsFrom(formData);
+  await editSchedule(id, message, time, days);
+  revalidatePath("/admin/settings");
+  redirect("/admin/settings?saved=1");
+}
+
+export async function deleteScheduleAction(formData: FormData) {
+  const id = Number(formData.get("scheduleId"));
+  await removeSchedule(id);
+  revalidatePath("/admin/settings");
 }

@@ -7,6 +7,18 @@ import {
   deleteWorker,
 } from "@/lib/repositories/users.repo";
 import { getAllSites, createSite, deleteSite } from "@/lib/repositories/sites.repo";
+import {
+  listSchedules,
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+} from "@/lib/repositories/notificationSchedules.repo";
+import {
+  getEntryCountsForMonth,
+  getEntriesForDate,
+  getImagesForEntries,
+} from "@/lib/repositories/entries.repo";
+import { getSignedImageUrl } from "@/lib/storage";
 
 // Postgres error code 23503 = foreign key violation. Deleting a worker or a
 // site both have the same shape of problem: if any entries still reference
@@ -25,13 +37,6 @@ async function deleteOrExplainFkViolation(action: () => Promise<void>, friendlyM
     throw err;
   }
 }
-import { getSettings, updateNotificationSchedule } from "@/lib/repositories/settings.repo";
-import {
-  getEntryCountsForMonth,
-  getEntriesForDate,
-  getImagesForEntries,
-} from "@/lib/repositories/entries.repo";
-import { getSignedImageUrl } from "@/lib/storage";
 
 export async function getWorkers() {
   await requireAdmin();
@@ -90,19 +95,39 @@ export async function removeWorker(userId: number) {
   );
 }
 
-export async function getNotificationSettings() {
-  await requireAdmin();
-  return getSettings();
-}
-
 export const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time (HH:MM)");
 export const daysSchema = z.array(z.number().int().min(0).max(6)).min(1, "Pick at least one day");
+export const messageSchema = z.string().trim().min(1, "Message is required").max(300);
 
-export async function setNotificationSchedule(time: string, days: number[]) {
+export async function getSchedules() {
   await requireAdmin();
+  return listSchedules();
+}
+
+export async function addSchedule(message: string, time: string, days: number[]) {
+  await requireAdmin();
+  const validMessage = messageSchema.parse(message);
   const validTime = timeSchema.parse(time);
   const validDays = daysSchema.parse(days);
-  return updateNotificationSchedule(`${validTime}:00`, validDays);
+  return createSchedule(validMessage, `${validTime}:00`, validDays);
+}
+
+export async function editSchedule(
+  id: number,
+  message: string,
+  time: string,
+  days: number[],
+) {
+  await requireAdmin();
+  const validMessage = messageSchema.parse(message);
+  const validTime = timeSchema.parse(time);
+  const validDays = daysSchema.parse(days);
+  return updateSchedule(id, validMessage, `${validTime}:00`, validDays);
+}
+
+export async function removeSchedule(id: number) {
+  await requireAdmin();
+  return deleteSchedule(id);
 }
 
 // year: 4-digit, month: 1-12. Returns a map of "YYYY-MM-DD" -> entry count,

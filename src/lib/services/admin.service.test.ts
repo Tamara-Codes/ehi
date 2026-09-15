@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { emailSchema, nameSchema, timeSchema, daysSchema } from "./admin.service";
+import { emailSchema, nameSchema, timeSchema, daysSchema, messageSchema } from "./admin.service";
 
 describe("emailSchema", () => {
   it("accepts a normal Gmail address", () => {
@@ -84,5 +84,35 @@ describe("daysSchema", () => {
 
   it("rejects non-integer values", () => {
     expect(daysSchema.safeParse([1.5]).success).toBe(false);
+  });
+});
+
+describe("messageSchema", () => {
+  it("accepts a normal reminder message", () => {
+    expect(messageSchema.safeParse("Ne zaboravite upisati što ste danas radili.").success).toBe(
+      true,
+    );
+  });
+
+  it("trims surrounding whitespace", () => {
+    const result = messageSchema.safeParse("  Poruka  ");
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe("Poruka");
+  });
+
+  it("rejects an empty message", () => {
+    expect(messageSchema.safeParse("").success).toBe(false);
+  });
+
+  it("rejects a whitespace-only message (trimmed to empty)", () => {
+    expect(messageSchema.safeParse("   ").success).toBe(false);
+  });
+
+  it("rejects a message over 300 characters", () => {
+    expect(messageSchema.safeParse("a".repeat(301)).success).toBe(false);
+  });
+
+  it("accepts a message at exactly the 300-char limit", () => {
+    expect(messageSchema.safeParse("a".repeat(300)).success).toBe(true);
   });
 });

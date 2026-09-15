@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeReminderDecision, subscriptionSchema, type ReminderSettings } from "./push.service";
+import { computeReminderDecision, subscriptionSchema, type ScheduleTiming } from "./push.service";
 
 const validKeys = { p256dh: "some-key-material", auth: "some-auth-secret" };
 
@@ -67,7 +67,7 @@ function wednesdayAt(hour: number, minute: number) {
   return new Date(Date.UTC(2026, 8, 9, hour - 2, minute)); // 2026-09-09, CEST = UTC+2
 }
 
-const baseSettings: ReminderSettings = {
+const baseSchedule: ScheduleTiming = {
   lastNotifiedDate: null,
   notifyDays: [0, 1, 2, 3, 4, 5, 6], // every day
   notificationTime: "16:00:00",
@@ -75,23 +75,23 @@ const baseSettings: ReminderSettings = {
 
 describe("computeReminderDecision", () => {
   it("is due once the clock reaches the target time", () => {
-    const result = computeReminderDecision(baseSettings, wednesdayAt(16, 0));
+    const result = computeReminderDecision(baseSchedule, wednesdayAt(16, 0));
     expect(result).toEqual({ due: true });
   });
 
   it("is due any time after the target time, not just exactly at it", () => {
-    const result = computeReminderDecision(baseSettings, wednesdayAt(18, 45));
+    const result = computeReminderDecision(baseSchedule, wednesdayAt(18, 45));
     expect(result).toEqual({ due: true });
   });
 
   it("is not due before the target time", () => {
-    const result = computeReminderDecision(baseSettings, wednesdayAt(15, 59));
+    const result = computeReminderDecision(baseSchedule, wednesdayAt(15, 59));
     expect(result).toEqual({ due: false, reason: "not-yet-time" });
   });
 
   it("is not due one minute before the target time", () => {
     const result = computeReminderDecision(
-      { ...baseSettings, notificationTime: "09:05:00" },
+      { ...baseSchedule, notificationTime: "09:05:00" },
       wednesdayAt(9, 4),
     );
     expect(result).toEqual({ due: false, reason: "not-yet-time" });
@@ -100,7 +100,7 @@ describe("computeReminderDecision", () => {
   it("respects notifyDays — skips a day not in the list", () => {
     // Wednesday = 3, excluded here.
     const result = computeReminderDecision(
-      { ...baseSettings, notifyDays: [1, 2, 4, 5] },
+      { ...baseSchedule, notifyDays: [1, 2, 4, 5] },
       wednesdayAt(16, 0),
     );
     expect(result).toEqual({ due: false, reason: "not-a-notify-day" });
@@ -108,7 +108,7 @@ describe("computeReminderDecision", () => {
 
   it("sends on a day that is in notifyDays", () => {
     const result = computeReminderDecision(
-      { ...baseSettings, notifyDays: [3] },
+      { ...baseSchedule, notifyDays: [3] },
       wednesdayAt(16, 0),
     );
     expect(result).toEqual({ due: true });
@@ -116,7 +116,7 @@ describe("computeReminderDecision", () => {
 
   it("refuses to send twice on the same day even if past the target time", () => {
     const result = computeReminderDecision(
-      { ...baseSettings, lastNotifiedDate: "2026-09-09" },
+      { ...baseSchedule, lastNotifiedDate: "2026-09-09" },
       wednesdayAt(20, 0),
     );
     expect(result).toEqual({ due: false, reason: "already-sent-today" });
@@ -124,7 +124,7 @@ describe("computeReminderDecision", () => {
 
   it("sends again on a new day even if it sent yesterday", () => {
     const result = computeReminderDecision(
-      { ...baseSettings, lastNotifiedDate: "2026-09-08" },
+      { ...baseSchedule, lastNotifiedDate: "2026-09-08" },
       wednesdayAt(16, 0),
     );
     expect(result).toEqual({ due: true });
@@ -142,7 +142,7 @@ describe("computeReminderDecision", () => {
   });
 
   it("handles a notification time with a non-zero minute correctly", () => {
-    const settings = { ...baseSettings, notificationTime: "16:30:00" };
+    const settings = { ...baseSchedule, notificationTime: "16:30:00" };
     expect(computeReminderDecision(settings, wednesdayAt(16, 29))).toEqual({
       due: false,
       reason: "not-yet-time",
