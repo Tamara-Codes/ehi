@@ -3,6 +3,7 @@ import { auth, signIn, signOut } from "@/auth";
 import { submitEntryAction } from "./actions";
 import { getAllSites } from "@/lib/repositories/sites.repo";
 import { EnablePushButton } from "@/components/EnablePushButton";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export default async function Home({
   searchParams,
@@ -170,9 +171,9 @@ export default async function Home({
               />
             </div>
 
-            <button type="submit" className="btn-primary">
+            <SubmitButton pendingText="Spremanje..." className="btn-primary">
               Spremi
-            </button>
+            </SubmitButton>
           </form>
         )}
       </main>
