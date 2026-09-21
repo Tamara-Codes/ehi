@@ -1,41 +1,40 @@
 "use server";
 
-import { createEntryForCurrentUser } from "@/lib/services/entries.service";
+import {
+  createEntryForCurrentUser,
+  requestMediaUploadUrls,
+  type EntryInput,
+  type SelectedFile,
+  type UploadedMedia,
+} from "@/lib/services/entries.service";
 import { subscribeCurrentUser } from "@/lib/services/push.service";
-import { redirect } from "next/navigation";
 
-// This is what our <form> below actually calls on submit. It only ever runs
-// on the server — the browser never sees this function's code, only a stub
-// that knows how to trigger it (the mechanism we walked through earlier).
-export async function submitEntryAction(formData: FormData) {
-  // FormData gives us everything as strings — checkboxes only appear in
-  // FormData at all when checked, so presence (not value) is what we check.
-  // getAll("images") returns every file the user attached under that name;
-  // an empty/unselected file input still shows up as one zero-byte File, so
-  // we filter those out.
-  const images = formData
-    .getAll("images")
-    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+// Called directly from the report form (a Client Component) before any
+// files are uploaded — see requestMediaUploadUrls for why uploads go
+// straight from the browser to R2 instead of through a Server Action.
+export async function requestMediaUploadUrlsAction(files: SelectedFile[]) {
+  return requestMediaUploadUrls(files);
+}
 
-  const siteId = Number(formData.get("siteId"));
-
-  await createEntryForCurrentUser(
-    {
-      description: String(formData.get("description") ?? ""),
-      materialOnSite: formData.get("materialOnSite") === "on",
-      materialMissingNote: String(formData.get("materialMissingNote") ?? ""),
-      hasExtraPaidWork: formData.get("hasExtraPaidWork") === "on",
-      extraPaidWorkNote: String(formData.get("extraPaidWorkNote") ?? ""),
-      hasProblems: formData.get("hasProblems") === "on",
-      problemsNote: String(formData.get("problemsNote") ?? ""),
-      needsOrder: formData.get("needsOrder") === "on",
-      orderNote: String(formData.get("orderNote") ?? ""),
-    },
-    images,
-    siteId,
-  );
-
-  redirect("/?saved=1");
+// Called after the browser has finished uploading every file straight to
+// R2 — this just records the report itself, referencing what was uploaded
+// by key. Server Actions can be imported and called like a regular async
+// function from a Client Component; Next.js handles sending the call to the
+// server and back automatically (same pattern as subscribeToPushAction).
+//
+// Deliberately doesn't call redirect() itself: redirect() inside a Server
+// Action still does the navigation client-side, but because it lands back
+// on the same route ("/", just with ?saved=1"), React keeps the calling
+// form component mounted rather than remounting it — so its own "saving..."
+// state would never reset. Returning here and letting the caller navigate
+// (and reset its own state) avoids that.
+export async function submitEntryAction(
+  input: EntryInput,
+  siteId: number,
+  batchToken: string,
+  media: UploadedMedia[],
+) {
+  await createEntryForCurrentUser(input, siteId, batchToken, media);
 }
 
 // Called directly from the client-side "enable notifications" button — not

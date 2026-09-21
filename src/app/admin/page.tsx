@@ -158,7 +158,7 @@ export default async function AdminEntriesPage({
                 </div>
               )}
 
-              {entry.imageUrls.length > 0 && <ImageGallery urls={entry.imageUrls} />}
+              {entry.media.length > 0 && <ImageGallery media={entry.media} />}
             </div>
           ))}
         </div>

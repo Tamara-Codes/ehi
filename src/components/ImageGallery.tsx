@@ -2,39 +2,57 @@
 
 import { useEffect, useState } from "react";
 
+type MediaItem = { url: string; kind: "image" | "video" };
+
 // Thumbnails need a click handler and the full-screen view needs open/close
 // state, neither of which a server-rendered admin page can do on its own —
 // this is why this one piece is a Client Component while the rest of the
 // admin dashboard stays server-rendered.
-export function ImageGallery({ urls }: { urls: string[] }) {
+export function ImageGallery({ media }: { media: MediaItem[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (openIndex === null) return;
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpenIndex(null);
-      if (e.key === "ArrowLeft") setOpenIndex((i) => (i === null ? i : (i - 1 + urls.length) % urls.length));
-      if (e.key === "ArrowRight") setOpenIndex((i) => (i === null ? i : (i + 1) % urls.length));
+      if (e.key === "ArrowLeft") setOpenIndex((i) => (i === null ? i : (i - 1 + media.length) % media.length));
+      if (e.key === "ArrowRight") setOpenIndex((i) => (i === null ? i : (i + 1) % media.length));
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [openIndex, urls.length]);
+  }, [openIndex, media.length]);
 
   return (
     <>
       <div className="mt-3 flex gap-2 overflow-x-auto">
-        {urls.map((url, i) => (
+        {media.map((item, i) => (
           <button
-            key={url}
+            key={item.url}
             type="button"
             onClick={() => setOpenIndex(i)}
-            className="shrink-0 cursor-zoom-in"
-            aria-label="Prikaži sliku u punoj veličini"
+            className="relative shrink-0 cursor-zoom-in"
+            aria-label={item.kind === "video" ? "Prikaži video" : "Prikaži sliku u punoj veličini"}
           >
-            {/* Signed, short-lived R2 URLs aren't a fit for next/image's
-                remote optimizer allowlist; a plain <img> is correct here. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-20 w-20 rounded-lg object-cover" />
+            {item.kind === "video" ? (
+              <>
+                {/* muted+playsInline: just for a live thumbnail frame, not
+                    playback — clicking opens the full-screen view instead. */}
+                <video
+                  src={item.url}
+                  muted
+                  playsInline
+                  className="h-20 w-20 rounded-lg object-cover"
+                />
+                <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/20 text-2xl text-white">
+                  ▶
+                </span>
+              </>
+            ) : (
+              // Signed, short-lived R2 URLs aren't a fit for next/image's
+              // remote optimizer allowlist; a plain <img> is correct here.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
+            )}
           </button>
         ))}
       </div>
@@ -53,15 +71,15 @@ export function ImageGallery({ urls }: { urls: string[] }) {
             ×
           </button>
 
-          {urls.length > 1 && (
+          {media.length > 1 && (
             <>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setOpenIndex((openIndex - 1 + urls.length) % urls.length);
+                  setOpenIndex((openIndex - 1 + media.length) % media.length);
                 }}
-                aria-label="Prethodna slika"
+                aria-label="Prethodna stavka"
                 className="absolute left-2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20 sm:left-4"
               >
                 ‹
@@ -70,9 +88,9 @@ export function ImageGallery({ urls }: { urls: string[] }) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setOpenIndex((openIndex + 1) % urls.length);
+                  setOpenIndex((openIndex + 1) % media.length);
                 }}
-                aria-label="Sljedeća slika"
+                aria-label="Sljedeća stavka"
                 className="absolute right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20 sm:right-4"
               >
                 ›
@@ -80,17 +98,28 @@ export function ImageGallery({ urls }: { urls: string[] }) {
             </>
           )}
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={urls[openIndex]}
-            alt=""
-            className="max-h-full max-w-full rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {media[openIndex].kind === "video" ? (
+            <video
+              src={media[openIndex].url}
+              controls
+              autoPlay
+              playsInline
+              className="max-h-full max-w-full rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={media[openIndex].url}
+              alt=""
+              className="max-h-full max-w-full rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
 
-          {urls.length > 1 && (
+          {media.length > 1 && (
             <p className="absolute bottom-4 text-sm text-white/70">
-              {openIndex + 1} / {urls.length}
+              {openIndex + 1} / {media.length}
             </p>
           )}
         </div>

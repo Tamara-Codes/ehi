@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { entryInputSchema, deriveNoteFields, type EntryInput } from "./entries.service";
+import {
+  entryInputSchema,
+  deriveNoteFields,
+  classifyAndValidateFiles,
+  type EntryInput,
+  type SelectedFile,
+} from "./entries.service";
+
+function file(overrides: Partial<SelectedFile> = {}): SelectedFile {
+  return { name: "photo.jpg", type: "image/jpeg", size: 1024, ...overrides };
+}
 
 function baseInput(overrides: Partial<EntryInput> = {}): EntryInput {
   return {
@@ -97,5 +107,59 @@ describe("deriveNoteFields", () => {
   it("defaults an undefined note to null even when its toggle is on", () => {
     const result = deriveNoteFields(baseInput({ needsOrder: true, orderNote: undefined }));
     expect(result.orderNote).toBeNull();
+  });
+});
+
+describe("classifyAndValidateFiles", () => {
+  it("classifies a known image type as an image", () => {
+    const [result] = classifyAndValidateFiles([file({ type: "image/png" })]);
+    expect(result.kind).toBe("image");
+  });
+
+  it("classifies a known video type as a video", () => {
+    const [result] = classifyAndValidateFiles([file({ type: "video/mp4", size: 1024 })]);
+    expect(result.kind).toBe("video");
+  });
+
+  it("rejects an unsupported file type", () => {
+    expect(() => classifyAndValidateFiles([file({ type: "application/pdf" })])).toThrow();
+  });
+
+  it("accepts up to 100 images", () => {
+    const files = Array.from({ length: 100 }, () => file());
+    expect(() => classifyAndValidateFiles(files)).not.toThrow();
+  });
+
+  it("rejects more than 100 images", () => {
+    const files = Array.from({ length: 101 }, () => file());
+    expect(() => classifyAndValidateFiles(files)).toThrow();
+  });
+
+  it("doesn't count videos against the image cap", () => {
+    const files = [
+      ...Array.from({ length: 100 }, () => file()),
+      ...Array.from({ length: 20 }, () => file({ type: "video/mp4" })),
+    ];
+    expect(() => classifyAndValidateFiles(files)).not.toThrow();
+  });
+
+  it("rejects an image over 8MB", () => {
+    expect(() => classifyAndValidateFiles([file({ size: 8 * 1024 * 1024 + 1 })])).toThrow();
+  });
+
+  it("accepts an image at exactly 8MB", () => {
+    expect(() => classifyAndValidateFiles([file({ size: 8 * 1024 * 1024 })])).not.toThrow();
+  });
+
+  it("rejects a video over 300MB", () => {
+    expect(() =>
+      classifyAndValidateFiles([file({ type: "video/mp4", size: 300 * 1024 * 1024 + 1 })]),
+    ).toThrow();
+  });
+
+  it("accepts a video at exactly 300MB", () => {
+    expect(() =>
+      classifyAndValidateFiles([file({ type: "video/mp4", size: 300 * 1024 * 1024 })]),
+    ).not.toThrow();
   });
 });

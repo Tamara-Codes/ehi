@@ -11,11 +11,14 @@ export async function insertEntry(data: NewEntry) {
   return row;
 }
 
-export async function insertEntryImages(entryId: number, storageKeys: string[]) {
-  if (storageKeys.length === 0) return [];
+export async function insertEntryImages(
+  entryId: number,
+  media: { storageKey: string; kind: "image" | "video" }[],
+) {
+  if (media.length === 0) return [];
   return db
     .insert(entryImages)
-    .values(storageKeys.map((storageKey) => ({ entryId, storageKey })))
+    .values(media.map((m) => ({ entryId, storageKey: m.storageKey, kind: m.kind })))
     .returning();
 }
 
@@ -59,15 +62,11 @@ export async function getEntriesForDate(date: string) {
     .orderBy(desc(entries.createdAt));
 }
 
-export async function getImagesForEntry(entryId: number) {
-  return db.select().from(entryImages).where(eq(entryImages.entryId, entryId));
-}
-
-// Same data as calling getImagesForEntry once per entry, but in a single
-// round-trip instead of N — matters because the neon-http driver makes
-// every query its own HTTP request (no pooling), so an admin dashboard
-// showing a day with many entries would otherwise fire off that many
-// concurrent requests just to fetch photos.
+// One round-trip for every entry's media on a given day, instead of one
+// query per entry — matters because the neon-http driver makes every query
+// its own HTTP request (no pooling), so an admin dashboard showing a day
+// with many entries would otherwise fire off that many concurrent requests
+// just to fetch photos/videos.
 export async function getImagesForEntries(entryIds: number[]) {
   if (entryIds.length === 0) return [];
   return db.select().from(entryImages).where(inArray(entryImages.entryId, entryIds));
