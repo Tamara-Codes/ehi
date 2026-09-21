@@ -162,10 +162,13 @@ export async function getEntriesForDay(date: string) {
   return Promise.all(
     entries.map(async (entry) => {
       const images = imagesByEntryId.get(entry.id) ?? [];
-      const imageUrls = await Promise.all(
-        images.map((img) => getSignedImageUrl(img.storageKey)),
+      const media = await Promise.all(
+        images.map(async (img) => ({
+          url: await getSignedImageUrl(img.storageKey),
+          kind: img.kind,
+        })),
       );
-      return { ...entry, imageUrls };
+      return { ...entry, media };
     }),
   );
 }

@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { db } from "@/lib/db/client";
 import { sites } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { insertEntry, insertEntryImages } from "@/lib/repositories/entries.repo";
-import { uploadEntryImage } from "@/lib/storage";
+import { createUploadUrl, getObjectSize, readObjectPrefix } from "@/lib/storage";
 import { matchesImageSignature } from "@/lib/imageSignature";
+import { matchesVideoSignature } from "@/lib/videoSignature";
 import { businessDateString } from "@/lib/businessDate";
 import { requireUser } from "@/lib/auth-guards";
 
@@ -25,9 +27,54 @@ export const entryInputSchema = z.object({
 
 export type EntryInput = z.infer<typeof entryInputSchema>;
 
-const MAX_IMAGES = 6;
+const MAX_IMAGES = 100;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+// No count cap on videos (client's call — see conversation), just a
+// per-file ceiling to keep any single upload finishing in a reasonable time
+// on a construction site's connection.
+const MAX_VIDEO_BYTES = 300 * 1024 * 1024; // 300MB
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic"]);
+const ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+]);
+
+export type MediaKind = "image" | "video";
+export type SelectedFile = { name: string; type: string; size: number };
+export type ClassifiedFile = SelectedFile & { kind: MediaKind };
+export type UploadedMedia = { key: string; type: string; kind: MediaKind };
+
+// Figures out image vs. video from the declared MIME type and checks it
+// against the per-kind allowlist/size caps — before we ever hand out an R2
+// upload URL for it. Pure function, exported for direct unit testing.
+export function classifyAndValidateFiles(files: SelectedFile[]): ClassifiedFile[] {
+  const imageCount = files.filter((f) => ALLOWED_IMAGE_TYPES.has(f.type)).length;
+  if (imageCount > MAX_IMAGES) {
+    throw new Error(`Previše slika odjednom (najviše ${MAX_IMAGES}).`);
+  }
+
+  return files.map((file) => {
+    if (ALLOWED_IMAGE_TYPES.has(file.type)) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        throw new Error(
+          `"${file.name}" je prevelika slika (najviše ${MAX_IMAGE_BYTES / 1024 / 1024}MB).`,
+        );
+      }
+      return { ...file, kind: "image" as const };
+    }
+    if (ALLOWED_VIDEO_TYPES.has(file.type)) {
+      if (file.size > MAX_VIDEO_BYTES) {
+        throw new Error(
+          `"${file.name}" je prevelik video (najviše ${MAX_VIDEO_BYTES / 1024 / 1024}MB).`,
+        );
+      }
+      return { ...file, kind: "video" as const };
+    }
+    throw new Error(`"${file.name}" nije podržana vrsta datoteke.`);
+  });
+}
 
 // A toggle's note only ever means something when the toggle is in the
 // state that makes it relevant (ON for the three "describe the issue"
@@ -44,10 +91,37 @@ export function deriveNoteFields(parsed: EntryInput) {
   };
 }
 
+// Step 1 of submitting a report: the worker has picked files but hasn't hit
+// "Spremi" yet. We hand back a signed R2 upload URL per file so the browser
+// can upload the bytes directly — never through our own server. That's what
+// makes video workable at all: a Next.js Server Action caps request bodies
+// at 1MB by default, and even raised, funneling a 300MB video through a
+// Vercel function risks its execution time/memory limits. batchToken
+// namespaces this submission's uploads; the entry row doesn't exist yet
+// (nothing's confirmed uploaded), so keys can't be scoped by entry id.
+export async function requestMediaUploadUrls(files: SelectedFile[]) {
+  await requireUser();
+
+  const classified = classifyAndValidateFiles(files);
+  const batchToken = randomUUID();
+
+  const uploads = await Promise.all(
+    classified.map(async (file) => {
+      const { key, uploadUrl } = await createUploadUrl(batchToken, file.type);
+      return { key, uploadUrl, kind: file.kind, type: file.type };
+    }),
+  );
+
+  return { batchToken, uploads };
+}
+
+// Step 2: the browser has finished uploading straight to R2 and is now
+// submitting the actual report, referencing what it uploaded by key.
 export async function createEntryForCurrentUser(
   input: EntryInput,
-  images: File[],
   siteId: number,
+  batchToken: string,
+  media: UploadedMedia[],
 ) {
   // Everything here derives from the server-side session, never from
   // anything the client claims — this is the "row-level scoping in
@@ -66,33 +140,44 @@ export async function createEntryForCurrentUser(
   // foreign key at insert time with a less clear error.
   const [site] = await db.select().from(sites).where(eq(sites.id, siteId));
   if (!site) {
-    throw new Error("Site not found");
+    throw new Error("Gradilište nije pronađeno.");
   }
 
-  // Reject bad images before anything touches R2 or the database — the
-  // same "validate at the boundary" rule as the text fields above. We read
-  // each file's actual bytes here (not just trust the declared type/size)
-  // so a hand-crafted request claiming to be a JPEG can't slip something
-  // else through — see matchesImageSignature.
-  if (images.length > MAX_IMAGES) {
-    throw new Error(`Too many images (max ${MAX_IMAGES})`);
+  // A key not under this batch's own prefix would mean the request is
+  // trying to attach an upload from a different (possibly another worker's)
+  // batch to this entry.
+  for (const item of media) {
+    if (!item.key.startsWith(`entries/${batchToken}/`)) {
+      throw new Error("Neispravna referenca na datoteku.");
+    }
   }
-  // These reads/checks don't depend on each other, so run them concurrently
-  // rather than one-at-a-time — matters for the upload loop below more than
-  // here (no network I/O in this part), but keeps the two loops consistent.
-  const imageBuffers: Buffer[] = await Promise.all(
-    images.map(async (image) => {
-      if (!ALLOWED_IMAGE_TYPES.has(image.type)) {
-        throw new Error(`Unsupported image type: ${image.type}`);
+
+  // The client only ever *claims* type/size when requesting the upload URL
+  // in step 1 — nothing stops it from PUTting something else at that key
+  // once it holds a valid signed URL. Re-verify for real before trusting
+  // any of this enough to attach it to an entry: the object actually
+  // exists, is within the size cap for its kind, and its real bytes match
+  // the declared type (see matchesImageSignature/matchesVideoSignature).
+  await Promise.all(
+    media.map(async (item) => {
+      const maxBytes = item.kind === "video" ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+      const size = await getObjectSize(item.key);
+      if (size === null) {
+        throw new Error("Jedna od datoteka nije uspješno otpremljena.");
       }
-      if (image.size > MAX_IMAGE_BYTES) {
-        throw new Error(`Image too large (max ${MAX_IMAGE_BYTES / 1024 / 1024}MB)`);
+      if (size > maxBytes) {
+        throw new Error(
+          `Otpremljena datoteka prelazi dopušteno ograničenje (najviše ${maxBytes / 1024 / 1024}MB).`,
+        );
       }
-      const buffer = Buffer.from(await image.arrayBuffer());
-      if (!matchesImageSignature(buffer, image.type)) {
-        throw new Error(`File content doesn't match declared type: ${image.type}`);
+      const prefix = await readObjectPrefix(item.key);
+      const matches =
+        item.kind === "video"
+          ? matchesVideoSignature(prefix, item.type)
+          : matchesImageSignature(prefix, item.type);
+      if (!matches) {
+        throw new Error("Sadržaj datoteke ne odgovara prijavljenoj vrsti.");
       }
-      return buffer;
     }),
   );
 
@@ -116,14 +201,10 @@ export async function createEntryForCurrentUser(
     ...noteFields,
   });
 
-  // Each upload is an independent network round-trip to R2 — running them
-  // concurrently instead of one-at-a-time matters here, since a worker with
-  // several photos would otherwise sit through N sequential upload
-  // latencies on the entry-submission hot path.
-  const storageKeys = await Promise.all(
-    imageBuffers.map((buffer, i) => uploadEntryImage(entry.id, buffer, images[i].type)),
+  await insertEntryImages(
+    entry.id,
+    media.map((item) => ({ storageKey: item.key, kind: item.kind })),
   );
-  await insertEntryImages(entry.id, storageKeys);
 
   return entry;
 }
