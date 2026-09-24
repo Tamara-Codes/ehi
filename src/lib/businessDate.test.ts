@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { businessDateString, businessDayOfWeek, businessTimeString } from "./businessDate";
+import {
+  businessDateString,
+  businessDayOfWeek,
+  businessTimeString,
+  isNotificationPollingWindow,
+} from "./businessDate";
 
 describe("businessDate (Europe/Zagreb)", () => {
   // 2026-09-09 is in CEST (UTC+2) — Croatia's daylight-saving offset in
@@ -31,6 +36,16 @@ describe("businessDate (Europe/Zagreb)", () => {
     const winterInstant = new Date(Date.UTC(2026, 0, 15, 15, 0));
     expect(businessTimeString(winterInstant)).toBe("16:00");
     expect(businessDateString(winterInstant)).toBe("2026-01-15");
+  });
+
+  it("limits notification polling to 09:00–17:00 Zagreb time across DST", () => {
+    // 07:00 UTC is 09:00 CEST; 15:00 UTC is 17:00 CEST.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 9, 7, 0)))).toBe(true);
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 9, 15, 0)))).toBe(false);
+
+    // 08:00 UTC is 09:00 CET; 16:00 UTC is 17:00 CET.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 0, 15, 8, 0)))).toBe(true);
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 0, 15, 16, 0)))).toBe(false);
   });
 
   it("gets the correct day of week across the full week", () => {

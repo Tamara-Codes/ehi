@@ -49,3 +49,9 @@ export function businessTimeString(instant: Date): string {
   const get = (type: string) => parts.find((p) => p.type === type)!.value;
   return `${get("hour")}:${get("minute")}`;
 }
+
+/** Whether an instant falls inside the 09:00–17:00 Zagreb notification window. */
+export function isNotificationPollingWindow(instant: Date): boolean {
+  const time = businessTimeString(instant);
+  return time >= "09:00" && time < "17:00";
+}

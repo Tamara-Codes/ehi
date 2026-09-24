@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { isNotificationPollingWindow } from "@/lib/businessDate";
 import { sendDueReminders } from "@/lib/services/push.service";
 
 // Plain !== comparison is vulnerable in principle to a timing side-channel
@@ -25,6 +26,13 @@ function isAuthorized(request: NextRequest) {
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Vercel Cron is UTC-only while the business notification window is Zagreb
+  // local time. Keep this guard before sendDueReminders(), whose first action
+  // is a Neon query, so the database stays suspended outside business hours.
+  if (!isNotificationPollingWindow(new Date())) {
+    return NextResponse.json({ skipped: "outside-notification-window" });
   }
 
   const results = await sendDueReminders();
