@@ -38,14 +38,27 @@ describe("businessDate (Europe/Zagreb)", () => {
     expect(businessDateString(winterInstant)).toBe("2026-01-15");
   });
 
-  it("limits notification polling to 09:00–17:00 Zagreb time across DST", () => {
-    // 07:00 UTC is 09:00 CEST; 15:00 UTC is 17:00 CEST.
-    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 9, 7, 0)))).toBe(true);
+  it("limits weekday notification polling to 08:00–17:00 Zagreb time across DST", () => {
+    // 06:00 UTC is 08:00 CEST; 15:00 UTC is 17:00 CEST.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 9, 6, 0)))).toBe(true);
     expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 9, 15, 0)))).toBe(false);
 
-    // 08:00 UTC is 09:00 CET; 16:00 UTC is 17:00 CET.
-    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 0, 15, 8, 0)))).toBe(true);
+    // 07:00 UTC is 08:00 CET; 16:00 UTC is 17:00 CET.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 0, 15, 7, 0)))).toBe(true);
     expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 0, 15, 16, 0)))).toBe(false);
+  });
+
+  it("stops at 16:00 Saturday and resumes at 08:00 Monday Zagreb time", () => {
+    // 2026-09-12 is Saturday and CEST is UTC+2.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 12, 13, 45)))).toBe(true);
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 12, 14, 0)))).toBe(false);
+
+    // Sunday remains closed, even during its normal weekday hours.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 13, 8, 0)))).toBe(false);
+
+    // 2026-09-14 is Monday; 06:00 UTC is 08:00 Zagreb.
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 14, 5, 45)))).toBe(false);
+    expect(isNotificationPollingWindow(new Date(Date.UTC(2026, 8, 14, 6, 0)))).toBe(true);
   });
 
   it("gets the correct day of week across the full week", () => {

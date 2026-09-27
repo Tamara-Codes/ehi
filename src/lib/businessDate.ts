@@ -50,8 +50,18 @@ export function businessTimeString(instant: Date): string {
   return `${get("hour")}:${get("minute")}`;
 }
 
-/** Whether an instant falls inside the 09:00–17:00 Zagreb notification window. */
+/**
+ * Whether an instant falls inside the Zagreb notification window:
+ * Monday–Friday 08:00–17:00 and Saturday 08:00–16:00. Sunday is closed.
+ *
+ * This makes the worker inactive from Saturday 16:00 until Monday 08:00,
+ * regardless of CET/CEST.
+ */
 export function isNotificationPollingWindow(instant: Date): boolean {
   const time = businessTimeString(instant);
-  return time >= "09:00" && time < "17:00";
+  const day = businessDayOfWeek(instant);
+
+  if (day === 0) return false;
+  if (day === 6) return time >= "08:00" && time < "16:00";
+  return time >= "08:00" && time < "17:00";
 }
